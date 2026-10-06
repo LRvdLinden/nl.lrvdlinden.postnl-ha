@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.1
+
+### Fixed
+
+- Fixed the JavaScript syntax error in the package card that prevented the complete Lovelace bundle from registering.
+- Disabled live card-picker previews so PostNL cards no longer remain stuck on a loading spinner while being selected.
+- Added a lightweight visual card editor so all five PostNL cards can be selected and added directly from the Home Assistant dashboard editor.
+- Added guarded custom-element registration and refreshes existing `window.customCards` metadata when the frontend bundle is loaded again.
+- Disabled static frontend cache headers and bumped the frontend URL to `v=1.0.1` so Home Assistant does not keep serving the broken 1.0.0 card bundle.
+
+### Improved
+
+- Expanded the local PostNL brand asset set with icon/logo fallbacks for Home Assistant.
+- Device software version now follows the integration version constant instead of being hard-coded.
+- Release automation now reads the version from `manifest.json` and builds release notes from this changelog.
+
 ## 1.0.0
 
 ### New

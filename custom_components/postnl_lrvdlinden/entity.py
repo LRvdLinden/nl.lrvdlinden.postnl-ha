@@ -4,7 +4,7 @@ from __future__ import annotations
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, VERSION
 from .coordinator import PostNLCoordinator
 
 
@@ -20,5 +20,5 @@ class PostNLEntity(CoordinatorEntity[PostNLCoordinator]):
             name="Mijn PostNL",
             manufacturer="PostNL",
             model="PostNL account",
-            sw_version="1.0.0",
+            sw_version=VERSION,
         )

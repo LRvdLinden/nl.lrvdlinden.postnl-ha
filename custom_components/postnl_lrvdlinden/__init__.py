@@ -35,7 +35,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     if not hass.data.get(f"{DOMAIN}_frontend_registered"):
         frontend_path = Path(__file__).parent / "frontend"
         await hass.http.async_register_static_paths(
-            [StaticPathConfig(STATIC_URL, str(frontend_path), True)]
+            [StaticPathConfig(STATIC_URL, str(frontend_path), False)]
         )
         add_extra_js_url(hass, FRONTEND_MODULE_URL)
         hass.data[f"{DOMAIN}_frontend_registered"] = True

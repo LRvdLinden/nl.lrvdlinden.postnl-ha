@@ -1,11 +1,14 @@
-name: Build bundled assets
+name: Build bundled assets and release
 
 on:
   push:
     branches: [main]
     paths:
+      - "custom_components/postnl_lrvdlinden/**"
       - "tools/PostNL-Home-Assistant-Login-Helper/**"
-      - "custom_components/postnl_lrvdlinden/frontend/van-1.svg"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "hacs.json"
       - ".github/workflows/build-assets.yml"
   workflow_dispatch:
 
@@ -18,6 +21,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Read integration version
+        id: version
+        run: |
+          VERSION=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          print(json.loads(Path('custom_components/postnl_lrvdlinden/manifest.json').read_text())['version'])
+          PY
+          )
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Build helper and animated van
         run: |
           python -m pip install --quiet pillow cairosvg
@@ -29,31 +44,44 @@ jobs:
           from pathlib import Path
           import cairosvg
           from PIL import Image
-          svg=Path('custom_components/postnl_lrvdlinden/frontend/van-1.svg').read_bytes()
-          png=cairosvg.svg2png(bytestring=svg,output_width=190,output_height=125)
-          van=Image.open(BytesIO(png)).convert('RGBA')
-          frames=[]
-          for x in (-185,-110,-35,40,115,190,265,340,415):
-              frame=Image.new('RGBA',(480,260),(0,0,0,0))
-              frame.alpha_composite(van,(x,70))
+          svg = Path('custom_components/postnl_lrvdlinden/frontend/van-1.svg').read_bytes()
+          png = cairosvg.svg2png(bytestring=svg, output_width=190, output_height=125)
+          van = Image.open(BytesIO(png)).convert('RGBA')
+          frames = []
+          for x in (-185, -110, -35, 40, 115, 190, 265, 340, 415):
+              frame = Image.new('RGBA', (480, 260), (0, 0, 0, 0))
+              frame.alpha_composite(van, (x, 70))
               frames.append(frame)
-          out=Path('custom_components/postnl_lrvdlinden/frontend/postnl-van.gif')
-          frames[0].save(out,save_all=True,append_images=frames[1:],duration=110,loop=0,disposal=2,optimize=True)
+          out = Path('custom_components/postnl_lrvdlinden/frontend/postnl-van.gif')
+          frames[0].save(out, save_all=True, append_images=frames[1:], duration=110, loop=0, disposal=2, optimize=True)
           PY
+
       - name: Commit generated assets
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add tools/PostNL-Home-Assistant-Login-Helper.zip custom_components/postnl_lrvdlinden/frontend/postnl-van.gif
-          git commit -m "Build bundled assets for v1.0.0" || true
+          git diff --cached --quiet || git commit -m "Build bundled assets for v${{ steps.version.outputs.version }}"
           git push
-      - name: Publish v1.0.0 release
+
+      - name: Build release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+          version = re.escape(os.environ['VERSION'])
+          text = Path('CHANGELOG.md').read_text()
+          match = re.search(rf'^## {version}\n(.*?)(?=^## |\Z)', text, re.M | re.S)
+          notes = match.group(1).strip() if match else f'PostNL for Home Assistant {os.environ["VERSION"]}'
+          Path('/tmp/release-notes.md').write_text(notes + '\n')
+          PY
+
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          gh release view 1.0.0 >/dev/null 2>&1 || gh release create 1.0.0 --target main --title "v1.0.0" --notes "PostNL for Home Assistant v1.0.0: PostNL branding, Chrome login helper, five Lovelace cards, animated delivery van and HACS/Home Assistant validation."
-      - name: Clean legacy preview release notes
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release edit 0.1.0 --notes "Initial Home Assistant preview release." || true
+          gh release view "$VERSION" >/dev/null 2>&1 || gh release create "$VERSION" --target main --title "v$VERSION" --notes-file /tmp/release-notes.md

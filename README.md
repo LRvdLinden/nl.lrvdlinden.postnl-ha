@@ -11,7 +11,7 @@
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-41BDF5.svg">
   <img alt="Home Assistant 2026.6+" src="https://img.shields.io/badge/Home%20Assistant-2026.6%2B-18BCF2.svg">
-  <img alt="Version 1.0.0" src="https://img.shields.io/badge/version-1.0.0-orange.svg">
+  <img alt="Version 1.0.1" src="https://img.shields.io/badge/version-1.0.1-orange.svg">
   <img alt="GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-blue.svg">
 </p>
 
@@ -45,6 +45,8 @@ Mail scans are retrieved through an authenticated Home Assistant WebSocket comma
 
 The Lovelace module is served and registered automatically by the integration. No separate `/config/www/postnl` folder and no manually configured dashboard resource are required.
 
+After updating from **1.0.0** to **1.0.1**, restart Home Assistant and refresh the browser once. The frontend URL is versioned so Home Assistant loads the corrected Lovelace bundle instead of a cached copy.
+
 ---
 
 ## Linking your PostNL account
@@ -67,14 +69,14 @@ The callback, authorization code and tokens are not written to Home Assistant lo
 
 ## Lovelace cards
 
-All cards are registered automatically and appear in the dashboard card picker.
+All cards are registered automatically and appear in the dashboard card picker. Since **1.0.1**, the picker no longer tries to render live PostNL previews while you are choosing a card, so the cards remain immediately selectable.
 
 | Card | Lovelace type | Purpose |
 |---|---|---|
 | **Mijn Post** | `custom:postnl-mail-card` | Recent mail items with PostNL scan images |
 | **Laatste poststuk** | `custom:postnl-latest-mail-card` | Large view of the newest mail scan |
 | **Mijn Pakketten** | `custom:postnl-packages-card` | Recent parcels, status and parcel details |
-| **Mijn Bezorging** | `custom:postnl-delivery-card` | Current delivery with delivery window and animated PostNL van |
+| **Mijn Bezorging** | `custom:postnl-delivery-card` | Current delivery with delivery information and animated PostNL van |
 | **Mijn Bezorging image** | `custom:postnl-delivery-image-card` | Square delivery image-style card |
 
 ### YAML examples
@@ -104,6 +106,14 @@ type: custom:postnl-delivery-image-card
 </p>
 
 The dashboard frontend includes the supplied PostNL `icon.svg`, `van-1.svg` and animated delivery van so the cards keep the PostNL visual style.
+
+---
+
+## Branding
+
+The integration ships its PostNL icon and logo in `custom_components/postnl_lrvdlinden/brand/`, which is the Home Assistant 2026.3+ local-brand format. Home Assistant itself can therefore display the PostNL branding without a separate brands repository.
+
+Some HACS versions still show a generic placeholder for custom-integration icons even when the local Home Assistant brand icon is installed correctly. That is a HACS frontend limitation rather than a missing icon in this repository.
 
 ---
 
