@@ -1,0 +1,1 @@
+PostNL brand assets for Home Assistant 2026.3 and newer.
