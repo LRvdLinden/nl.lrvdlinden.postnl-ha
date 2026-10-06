@@ -1,1 +1,0 @@
-Preparing PostNL for Home Assistant v1.0.0 repository sync.

@@ -3,19 +3,19 @@
   "config": {
     "step": {
       "user": {
-        "title": "Connect your PostNL account",
-        "description": "First open [PostNL sign in]({auth_url}). Sign in. After login the browser tries to open `postnl://login?...`. Copy that complete callback URL and paste it below.",
+        "title": "Link your PostNL account",
+        "description": "### Linking your PostNL account\n\n1. [Download the PostNL Home Assistant Login Helper]({helper_url}) and extract the ZIP file. The helper is a Google Chrome extension.\n2. Open `chrome://extensions`, enable **Developer mode**, and choose **Load unpacked**. Select the extracted helper folder.\n3. Open [PostNL sign-in]({auth_url}) and sign in to your PostNL account.\n4. The helper automatically captures the `postnl://login?...` callback. Click the helper icon in Chrome and choose **Copy callback**.\n5. Return to Home Assistant, paste the callback below, and complete the sign-in process.",
         "data": {"callback_url": "PostNL callback URL"},
-        "data_description": {"callback_url": "The complete URL starting with postnl://login?code=..."}
+        "data_description": {"callback_url": "Paste the full callback URL beginning with postnl://login?code=..."}
       },
       "reauth_confirm": {
-        "title": "Sign in to PostNL again",
-        "description": "Your PostNL session expired. Open [PostNL sign in]({auth_url}), sign in and paste the complete `postnl://login?...` callback URL below.",
+        "title": "Reconnect PostNL",
+        "description": "Your PostNL session has expired.\n\n1. Make sure the [PostNL Home Assistant Login Helper]({helper_url}) is loaded in Chrome.\n2. Open [PostNL sign-in]({auth_url}) and sign in again.\n3. Copy the captured `postnl://login?...` callback from the helper and paste it below.",
         "data": {"callback_url": "PostNL callback URL"}
       }
     },
     "error": {
-      "invalid_auth": "The PostNL sign-in is invalid or expired. Try again.",
+      "invalid_auth": "The PostNL sign-in is invalid or has expired. Try again.",
       "cannot_connect": "Unable to reach PostNL or process the callback. Try again."
     },
     "abort": {"already_configured": "This PostNL account is already configured."}

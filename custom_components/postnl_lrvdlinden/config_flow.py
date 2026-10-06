@@ -7,7 +7,7 @@ import probatio
 from homeassistant import config_entries
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import PostNLApi, PostNLAuthError, PostNLError
+from .api import PostNLApi, PostNLAuthError
 from .const import (
     CONF_ACCESS_TOKEN,
     CONF_EXPIRES_AT,
@@ -15,11 +15,12 @@ from .const import (
     CONF_TOKEN_TYPE,
     CONF_USERNAME,
     DOMAIN,
+    HELPER_URL,
 )
 
 
 class PostNLConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """UI setup using the same PostNL PKCE login as the Homey app."""
+    """UI setup for the PostNL PKCE login."""
 
     VERSION = 1
 
@@ -39,7 +40,9 @@ class PostNLConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             callback_url = str(user_input.get("callback_url") or "").strip()
             try:
                 api = PostNLApi(async_get_clientsession(self.hass))
-                auth = await api.complete_authorization(callback_url, self._pending["verifier"], self._pending["state"])
+                auth = await api.complete_authorization(
+                    callback_url, self._pending["verifier"], self._pending["state"]
+                )
                 profile = await api.fetch_profile()
                 username = str((profile or {}).get("username") or "Mijn PostNL")
                 data = {
@@ -65,7 +68,10 @@ class PostNLConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id=step_id,
             data_schema=probatio.Schema({probatio.Required("callback_url"): str}),
             errors=errors,
-            description_placeholders={"auth_url": self._pending["url"]},
+            description_placeholders={
+                "auth_url": self._pending["url"],
+                "helper_url": HELPER_URL,
+            },
         )
 
     async def async_step_reauth(self, entry_data: dict[str, Any]):

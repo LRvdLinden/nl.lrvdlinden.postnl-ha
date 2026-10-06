@@ -20,5 +20,5 @@ class PostNLEntity(CoordinatorEntity[PostNLCoordinator]):
             name="Mijn PostNL",
             manufacturer="PostNL",
             model="PostNL account",
-            sw_version="0.1.0",
+            sw_version="1.0.0",
         )

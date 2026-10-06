@@ -1,4 +1,4 @@
-"""PostNL integration for Home Assistant, ported from PostNL for Homey."""
+"""PostNL integration for Home Assistant."""
 from __future__ import annotations
 
 from pathlib import Path

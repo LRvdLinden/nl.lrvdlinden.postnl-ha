@@ -1,10 +1,7 @@
-# PostNL Lovelace cards
-# The entity can be omitted: the cards auto-detect the PostNL role.
+# PostNL Lovelace examples
 
 - type: custom:postnl-mail-card
-
-- type: custom:postnl-latest-mail-card
-
 - type: custom:postnl-packages-card
-
 - type: custom:postnl-delivery-card
+- type: custom:postnl-latest-mail-card
+- type: custom:postnl-delivery-image-card

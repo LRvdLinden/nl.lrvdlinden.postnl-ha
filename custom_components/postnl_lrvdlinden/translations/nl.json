@@ -4,13 +4,13 @@
     "step": {
       "user": {
         "title": "Koppel je PostNL-account",
-        "description": "Open eerst [PostNL aanmelden]({auth_url}). Meld je aan. Na het aanmelden probeert de browser `postnl://login?...` te openen. Kopieer die volledige callback-URL uit de adresbalk of foutmelding en plak hem hieronder.",
+        "description": "### Je PostNL-account koppelen\n\n1. [Download de PostNL Home Assistant Login Helper]({helper_url}) en pak het ZIP-bestand uit. De helper is een Google Chrome-extensie.\n2. Open `chrome://extensions`, zet **Ontwikkelaarsmodus** aan en kies **Uitgepakte extensie laden**. Selecteer de uitgepakte helpermap.\n3. Open [PostNL aanmelden]({auth_url}) en log in op je PostNL-account.\n4. De helper vangt automatisch de `postnl://login?...` callback op. Klik op het helper-icoon in Chrome en kies **Callback kopiëren**.\n5. Ga terug naar Home Assistant, plak de callback hieronder en rond het aanmelden af.",
         "data": {"callback_url": "PostNL callback-URL"},
-        "data_description": {"callback_url": "De volledige URL die begint met postnl://login?code=..."}
+        "data_description": {"callback_url": "Plak de volledige callback-URL die begint met postnl://login?code=..."}
       },
       "reauth_confirm": {
-        "title": "PostNL opnieuw aanmelden",
-        "description": "Je PostNL-sessie is verlopen. Open [PostNL aanmelden]({auth_url}), meld opnieuw aan en plak daarna de volledige `postnl://login?...` callback-URL hieronder.",
+        "title": "PostNL opnieuw koppelen",
+        "description": "Je PostNL-sessie is verlopen.\n\n1. Controleer dat de [PostNL Home Assistant Login Helper]({helper_url}) in Chrome is geladen.\n2. Open [PostNL aanmelden]({auth_url}) en log opnieuw in.\n3. Kopieer de opgevangen `postnl://login?...` callback uit de helper en plak hem hieronder.",
         "data": {"callback_url": "PostNL callback-URL"}
       }
     },

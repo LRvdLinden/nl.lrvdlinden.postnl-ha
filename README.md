@@ -1,5 +1,6 @@
-<img width="1772" height="1102" alt="https___www metronieuws nl_wp-content_uploads_2020_08_POSTNL-01" src="https://github.com/user-attachments/assets/3b9957d2-a20d-4368-b96b-b0f60b1284cb" />
-
+<p align="center">
+  <img src="custom_components/postnl_lrvdlinden/brand/icon.png" alt="PostNL" width="180">
+</p>
 
 <h1 align="center">PostNL for Home Assistant</h1>
 
@@ -102,28 +103,13 @@ type: custom:postnl-delivery-image-card
   <img src="custom_components/postnl_lrvdlinden/frontend/postnl-van.gif" alt="PostNL delivery van" width="420">
 </p>
 
-The dashboard frontend also includes the supplied `icon.svg`, `van-1.svg`, package artwork and animated PostNL van GIF so the cards retain the PostNL visual style.
+The dashboard frontend includes the supplied PostNL `icon.svg`, `van-1.svg` and animated delivery van so the cards keep the PostNL visual style.
 
 ---
 
 ## Entities
 
-The integration exposes Home Assistant entities for, among other things:
-
-- mail item count;
-- parcel count;
-- expected mail;
-- connection state;
-- next delivery;
-- delivery date;
-- delivery window;
-- parcel status;
-- sender and recipient;
-- tracking code;
-- latest package event and status time;
-- shipment type;
-- last update;
-- manual refresh.
+The integration exposes Home Assistant entities for mail and parcel counts, expected mail, connection state, next delivery, delivery date and window, parcel status, sender, recipient, tracking code, latest event, shipment type, last update and manual refresh.
 
 These entities can be used directly in dashboards, scripts and automations alongside the included Lovelace cards.
 
@@ -131,19 +117,7 @@ These entities can be used directly in dashboards, scripts and automations along
 
 ## Manual installation
 
-Copy:
-
-```text
-custom_components/postnl_lrvdlinden
-```
-
-to:
-
-```text
-/config/custom_components/postnl_lrvdlinden
-```
-
-Restart Home Assistant and add **PostNL** from **Settings → Devices & services**.
+Copy `custom_components/postnl_lrvdlinden` to `/config/custom_components/postnl_lrvdlinden`, restart Home Assistant and add **PostNL** from **Settings → Devices & services**.
 
 ---
 

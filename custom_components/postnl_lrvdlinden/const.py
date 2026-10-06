@@ -5,11 +5,12 @@ from homeassistant.const import Platform
 
 DOMAIN = "postnl_lrvdlinden"
 NAME = "PostNL"
-VERSION = "0.1.0"
+VERSION = "1.0.0"
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.BUTTON]
 UPDATE_INTERVAL = timedelta(seconds=60)
 STATIC_URL = f"/{DOMAIN}_static"
 FRONTEND_MODULE_URL = f"{STATIC_URL}/postnl-card.js?v={VERSION}"
+HELPER_URL = "https://github.com/LRvdLinden/nl.lrvdlinden.postnl-ha/raw/main/tools/PostNL-Home-Assistant-Login-Helper.zip"
 
 CLIENT_ID = "deb0a372-6d72-4e09-83fe-997beacbd137"
 TENANT = "101112a0-4a0f-4bbb-8176-2f1b2d370d7c"

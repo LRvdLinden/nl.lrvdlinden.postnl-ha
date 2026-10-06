@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "PostNL Home Assistant Login Helper",
+  "description": "Captures the PostNL callback needed to link your PostNL account to Home Assistant.",
+  "version": "1.0.0",
+  "permissions": ["storage", "webRequest"],
+  "host_permissions": ["https://login.postnl.nl/*"],
+  "background": {"service_worker": "background.js"},
+  "action": {"default_title": "PostNL Home Assistant Login Helper", "default_popup": "popup.html"}
+}

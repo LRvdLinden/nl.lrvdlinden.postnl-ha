@@ -1,1 +1,0 @@
-This temporary file will be removed by the v1.0.0 atomic sync.
