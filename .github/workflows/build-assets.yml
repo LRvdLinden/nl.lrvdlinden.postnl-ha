@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Read integration version
         id: version
@@ -31,6 +33,74 @@ jobs:
           PY
           )
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Finalize v1.0.2 Lovelace assets
+        if: steps.version.outputs.version == '1.0.2'
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet pillow cairosvg
+          FRONTEND="custom_components/postnl_lrvdlinden/frontend"
+          curl -fsSL "https://raw.githubusercontent.com/LRvdLinden/nl.lrvdlinden.postnl/main/widgets/pakket-details/public/package.svg" -o "$FRONTEND/package.svg"
+          python - <<'PY'
+          from io import BytesIO
+          from pathlib import Path
+          import cairosvg
+          from PIL import Image, ImageDraw
+
+          root = Path('custom_components/postnl_lrvdlinden/frontend')
+          js = root / 'postnl-card-v102.js'
+          text = js.read_text(encoding='utf-8')
+          text = text.replace(
+              'const PACKAGE = "https://raw.githubusercontent.com/LRvdLinden/nl.lrvdlinden.postnl/v1.2.0/widgets/pakket-details/public/package.svg";',
+              'const PACKAGE = `${BASE}/package.svg`;'
+          )
+          js.write_text(text, encoding='utf-8')
+
+          svg = (root / 'van-1.svg').read_bytes()
+          van_png = cairosvg.svg2png(bytestring=svg, output_width=104, output_height=120)
+          van = Image.open(BytesIO(van_png)).convert('RGBA')
+          alpha = van.getchannel('A')
+          bbox = alpha.getbbox()
+          if bbox:
+              van = van.crop(bbox)
+          van.thumbnail((104, 58), Image.Resampling.LANCZOS)
+
+          def small_tree():
+              im = Image.new('RGBA', (52, 86), (0,0,0,0)); d = ImageDraw.Draw(im)
+              d.rectangle((24,52,28,84), fill=(19,38,57,255))
+              d.ellipse((11,20,42,60), fill=(39,164,67,255))
+              d.ellipse((16,8,38,39), fill=(48,177,74,255))
+              return im
+
+          def big_tree():
+              im = Image.new('RGBA', (92, 100), (0,0,0,0)); d = ImageDraw.Draw(im)
+              d.rectangle((43,64,48,99), fill=(19,38,57,255))
+              for box, color in [
+                  ((10,28,58,76),(34,139,50,255)), ((28,14,78,70),(42,151,58,255)),
+                  ((46,24,90,74),(48,164,66,255)), ((23,5,68,55),(36,142,51,255))
+              ]: d.ellipse(box, fill=color)
+              return im
+
+          st, bt = small_tree(), big_tree()
+          frames = []
+          for i in range(111):
+              fr = Image.new('RGBA', (240,170), (255,255,255,0))
+              # Trees travel behind the stationary van, matching the original Home Assistant card animation.
+              sx = int(270 - i * 3.1)
+              bx = int(330 - i * 3.7)
+              fr.alpha_composite(st, (sx, 40))
+              fr.alpha_composite(bt, (bx, 28))
+              fr.alpha_composite(van, (76, 66))
+              frames.append(fr)
+          out = root / 'postnl-van.gif'
+          frames[0].save(out, save_all=True, append_images=frames[1:], duration=40, loop=0, disposal=2, optimize=True)
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$FRONTEND/package.svg" "$FRONTEND/postnl-van.gif" "$FRONTEND/postnl-card-v102.js"
+          git diff --cached --quiet || git commit -m "Finalize My Delivery assets for v1.0.2"
+          git push
 
       - name: Validate card set
         run: |
