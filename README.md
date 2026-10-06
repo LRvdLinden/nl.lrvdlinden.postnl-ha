@@ -30,7 +30,7 @@
   - **Mijn Pakketten**
   - **Mijn Bezorging**
 - Local PostNL branding for the Home Assistant integration picker and device/service UI.
-- **Mijn Bezorging** uses the original PostNL layout, timeline and animated delivery van.
+- **Mijn Bezorging** follows the original PostNL widget layout, delivery timeline and animated delivery van concept.
 
 <p align="center">
   <img src="custom_components/postnl_lrvdlinden/frontend/postnl-van.gif" alt="PostNL delivery van" width="420">
@@ -102,7 +102,7 @@ Restart Home Assistant and add **PostNL** from **Settings → Devices & services
 
 ## Branding
 
-Home Assistant 2026.3 and newer can load brand assets directly from a custom integration. This repository includes the PostNL icon and logo under:
+Home Assistant can load brand assets directly from this custom integration. This repository includes the PostNL icon and logo under:
 
 ```text
 custom_components/postnl_lrvdlinden/brand/
