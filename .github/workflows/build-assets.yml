@@ -23,9 +23,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .release-assets/v1.0.2/part_* | base64 -d > /tmp/postnl-v1.0.2.zip
-          echo "$(sha256sum /tmp/postnl-v1.0.2.zip)"
-          unzip -oq /tmp/postnl-v1.0.2.zip -d "$GITHUB_WORKSPACE"
+          cat .release-assets/v1.0.2/code_* | base64 -d > /tmp/postnl-v1.0.2-code.tar.xz
+          xz -dc /tmp/postnl-v1.0.2-code.tar.xz | tar -x -C "$GITHUB_WORKSPACE"
+          cat .release-assets/v1.0.2/gif_* | base64 -d > custom_components/postnl_lrvdlinden/frontend/postnl-van.gif
           rm -f custom_components/postnl_lrvdlinden/frontend/no-mail-en.svg
           rm -f custom_components/postnl_lrvdlinden/frontend/no-mail-nl.svg
           rm -rf .release-assets/v1.0.2
@@ -40,9 +40,9 @@ jobs:
           active = '\n'.join(line for line in js.splitlines() if 'filter(card=>' not in line)
           assert 'postnl-latest-mail-card' not in active
           assert 'postnl-delivery-image-card' not in active
-          assert 'postnl-mail-card' in js and 'postnl-packages-card' in js and 'postnl-delivery-card' in js
+          assert all(x in js for x in ('postnl-mail-card','postnl-packages-card','postnl-delivery-card'))
           PY
-          echo "efcca70ca181a6b98a0077dcaa0455d4255bec7f97b5ea341b22cd1d51ac1f87  custom_components/postnl_lrvdlinden/frontend/postnl-van.gif" | sha256sum -c -
+          echo "220d2b8decf979ef75915c6a3857aaddea44e3b1ce600b055a950241c7d1291f  custom_components/postnl_lrvdlinden/frontend/postnl-van.gif" | sha256sum -c -
 
       - name: Commit v1.0.2
         shell: bash
