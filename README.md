@@ -32,10 +32,6 @@
 - Local PostNL branding for the Home Assistant integration picker and device/service UI.
 - **Mijn Bezorging** follows the original PostNL widget layout, delivery timeline and animated delivery van concept.
 
-<p align="center">
-  <img src="custom_components/postnl_lrvdlinden/frontend/postnl-van.gif" alt="PostNL delivery van" width="420">
-</p>
-
 Mail-item scans are not stored in the recorder as large base64 attributes. The Lovelace cards retrieve them through an authenticated Home Assistant WebSocket command.
 
 ## Installing via HACS
@@ -86,29 +82,7 @@ type: custom:postnl-delivery-card
 
 ## Manual installation
 
-Copy:
-
-```text
-custom_components/postnl_lrvdlinden
-```
-
-to:
-
-```text
-/config/custom_components/postnl_lrvdlinden
-```
-
-Restart Home Assistant and add **PostNL** from **Settings → Devices & services**.
-
-## Branding
-
-Home Assistant can load brand assets directly from this custom integration. This repository includes the PostNL icon and logo under:
-
-```text
-custom_components/postnl_lrvdlinden/brand/
-```
-
-The same branding assets are also included at repository root for compatibility with repository browsers and community tooling.
+Copy `custom_components/postnl_lrvdlinden` to `/config/custom_components/postnl_lrvdlinden`, restart Home Assistant and add **PostNL** from **Settings → Devices & services**.
 
 ## Compatibility
 
