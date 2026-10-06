@@ -1,14 +1,10 @@
-name: Build bundled assets and release
+name: Apply PostNL v1.0.2 release payload
 
 on:
   push:
     branches: [main]
     paths:
-      - "custom_components/postnl_lrvdlinden/**"
-      - "tools/PostNL-Home-Assistant-Login-Helper/**"
-      - "README.md"
-      - "CHANGELOG.md"
-      - "hacs.json"
+      - ".release-assets/v1.0.2/**"
       - ".github/workflows/build-assets.yml"
   workflow_dispatch:
 
@@ -16,72 +12,60 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    if: github.actor != 'github-actions[bot]'
+  apply:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Read integration version
-        id: version
+      - name: Apply exact v1.0.2 repository payload
+        shell: bash
         run: |
-          VERSION=$(python - <<'PY'
+          set -euo pipefail
+          cat .release-assets/v1.0.2/part_* | base64 -d > /tmp/postnl-v1.0.2.zip
+          echo "$(sha256sum /tmp/postnl-v1.0.2.zip)"
+          unzip -oq /tmp/postnl-v1.0.2.zip -d "$GITHUB_WORKSPACE"
+          rm -f custom_components/postnl_lrvdlinden/frontend/no-mail-en.svg
+          rm -f custom_components/postnl_lrvdlinden/frontend/no-mail-nl.svg
+          rm -rf .release-assets/v1.0.2
+          rm -f .github/workflows/build-assets.yml
+
+          python - <<'PY'
           import json
           from pathlib import Path
-          print(json.loads(Path('custom_components/postnl_lrvdlinden/manifest.json').read_text())['version'])
+          manifest = json.loads(Path('custom_components/postnl_lrvdlinden/manifest.json').read_text())
+          assert manifest['version'] == '1.0.2', manifest
+          js = Path('custom_components/postnl_lrvdlinden/frontend/postnl-card.js').read_text()
+          active = '\n'.join(line for line in js.splitlines() if 'filter(card=>' not in line)
+          assert 'postnl-latest-mail-card' not in active
+          assert 'postnl-delivery-image-card' not in active
+          assert 'postnl-mail-card' in js and 'postnl-packages-card' in js and 'postnl-delivery-card' in js
           PY
-          )
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "efcca70ca181a6b98a0077dcaa0455d4255bec7f97b5ea341b22cd1d51ac1f87  custom_components/postnl_lrvdlinden/frontend/postnl-van.gif" | sha256sum -c -
 
-      - name: Build helper and animated van
-        run: |
-          python -m pip install --quiet pillow cairosvg
-          cd tools/PostNL-Home-Assistant-Login-Helper
-          zip -qr ../PostNL-Home-Assistant-Login-Helper.zip .
-          cd "$GITHUB_WORKSPACE"
-          python - <<'PY'
-          from io import BytesIO
-          from pathlib import Path
-          import cairosvg
-          from PIL import Image
-          svg = Path('custom_components/postnl_lrvdlinden/frontend/van-1.svg').read_bytes()
-          png = cairosvg.svg2png(bytestring=svg, output_width=190, output_height=125)
-          van = Image.open(BytesIO(png)).convert('RGBA')
-          frames = []
-          for x in (-185, -110, -35, 40, 115, 190, 265, 340, 415):
-              frame = Image.new('RGBA', (480, 260), (0, 0, 0, 0))
-              frame.alpha_composite(van, (x, 70))
-              frames.append(frame)
-          out = Path('custom_components/postnl_lrvdlinden/frontend/postnl-van.gif')
-          frames[0].save(out, save_all=True, append_images=frames[1:], duration=110, loop=0, disposal=2, optimize=True)
-          PY
-
-      - name: Commit generated assets
+      - name: Commit v1.0.2
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tools/PostNL-Home-Assistant-Login-Helper.zip custom_components/postnl_lrvdlinden/frontend/postnl-van.gif
-          git diff --cached --quiet || git commit -m "Build bundled assets for v${{ steps.version.outputs.version }}"
+          git add -A
+          git commit -m "Release PostNL for Home Assistant v1.0.2"
           git push
 
-      - name: Build release notes
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          python - <<'PY'
-          import os
-          import re
-          from pathlib import Path
-          version = re.escape(os.environ['VERSION'])
-          text = Path('CHANGELOG.md').read_text()
-          match = re.search(rf'^## {version}\n(.*?)(?=^## |\Z)', text, re.M | re.S)
-          notes = match.group(1).strip() if match else f'PostNL for Home Assistant {os.environ["VERSION"]}'
-          Path('/tmp/release-notes.md').write_text(notes + '\n')
-          PY
-
-      - name: Publish release
+      - name: Publish v1.0.2 release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
         run: |
-          gh release view "$VERSION" >/dev/null 2>&1 || gh release create "$VERSION" --target main --title "v$VERSION" --notes-file /tmp/release-notes.md
+          if gh release view "1.0.2" >/dev/null 2>&1; then
+            exit 0
+          fi
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          text = Path('CHANGELOG.md').read_text(encoding='utf-8')
+          m = re.search(r'^## 1\.0\.2\n(.*?)(?=^## |\Z)', text, re.M | re.S)
+          Path('/tmp/release-notes.md').write_text((m.group(1).strip() if m else 'PostNL for Home Assistant 1.0.2') + '\n')
+          PY
+          gh release create "1.0.2" --target main --title "v1.0.2" --notes-file /tmp/release-notes.md
