@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "postnl_lrvdlinden"
 NAME = "PostNL"
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.BUTTON]
 UPDATE_INTERVAL = timedelta(seconds=60)
 STATIC_URL = f"/{DOMAIN}_static"
