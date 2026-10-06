@@ -1,37 +1,35 @@
 # Changelog
 
+## 1.0.2
+
+- Rebuilt **Mijn Bezorging** to match the original PostNL delivery widget layout, spacing, typography, package header and delivery timeline.
+- Bundled the original animated PostNL delivery van GIF unchanged, together with the matching `van-1.svg`, `package.svg` and `icon.svg` assets.
+- Delivery-window calculations now use the Home Assistant time zone so the progress line and time markers stay aligned with the displayed delivery window.
+- Removed the **Laatste poststuk** Lovelace card.
+- Removed the **Mijn Bezorging image** Lovelace card.
+- The integration now exposes exactly three built-in cards: **Mijn Post**, **Mijn Pakketten** and **Mijn Bezorging**.
+
 ## 1.0.1
 
-### Fixed
-
-- Fixed the JavaScript syntax error in the package card that prevented the complete Lovelace bundle from registering.
-- Disabled live card-picker previews so PostNL cards no longer remain stuck on a loading spinner while being selected.
-- Added a lightweight visual card editor so all five PostNL cards can be selected and added directly from the Home Assistant dashboard editor.
-- Added guarded custom-element registration and refreshes existing `window.customCards` metadata when the frontend bundle is loaded again.
-- Disabled static frontend cache headers and bumped the frontend URL to `v=1.0.1` so Home Assistant does not keep serving the broken 1.0.0 card bundle.
-
-### Improved
-
-- Expanded the local PostNL brand asset set with icon/logo fallbacks for Home Assistant.
-- Device software version now follows the integration version constant instead of being hard-coded.
-- Release automation now reads the version from `manifest.json` and builds release notes from this changelog.
+- Fixed Lovelace card picker loading by disabling live card previews.
+- Fixed Home Assistant 2026.6+ entity suggestions for all PostNL cards.
+- Mail scan images now use the supported `hass.callWS` path with a compatibility fallback.
+- Added repository and integration-local PostNL brand assets.
+- Bumped the frontend cache version so browsers load the fixed card bundle immediately.
+- Removed the asset rebuild workflow that could overwrite the bundled Lovelace frontend.
 
 ## 1.0.0
 
-### New
-
-- Added local PostNL brand assets for the Home Assistant integration UI.
-- Added the **PostNL Home Assistant Login Helper** for Chrome and linked it directly from the setup flow.
-- Added five built-in Lovelace cards: **Mijn Post**, **Laatste poststuk**, **Mijn Pakketten**, **Mijn Bezorging** and **Mijn Bezorging image**.
-- Added authenticated WebSocket delivery of PostNL mail-item scans.
+- First stable Home Assistant release.
+- Added local PostNL brand assets for the Home Assistant integration picker and device/service UI.
+- Added the PostNL Home Assistant Login Helper and linked it directly from the setup flow.
+- Setup instructions now explain how to load the Chrome extension, sign in to PostNL, copy the captured callback and finish setup in Home Assistant.
+- Added five built-in Lovelace cards: **Mijn Post**, **Mijn Pakketten**, **Mijn Bezorging**, **Laatste poststuk** and **Mijn Bezorging image**.
+- Updated the Lovelace cards to use the supplied PostNL `icon.svg`, `van-1.svg`, package asset and the supplied animated PostNL van GIF.
+- Added PostNL post-item scans through the authenticated Home Assistant WebSocket API.
 - Added package detail popups and delivery-window visualization.
-
-### Improved
-
-- Lovelace cards now use the supplied PostNL `icon.svg`, `van-1.svg` and animated PostNL delivery van.
-- Setup instructions now guide users through loading the Chrome extension, signing in to PostNL and pasting the captured callback into Home Assistant.
-- Added HACS and Hassfest validation for repository releases.
-- Cleaned the integration, documentation and helper so all user-facing text is specific to Home Assistant.
+- Removed references to unrelated smart-home platforms from the integration, documentation and login helper.
+- HACS and Hassfest repository validation included.
 
 ## 0.1.0
 
