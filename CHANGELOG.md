@@ -3,11 +3,11 @@
 ## 1.0.2
 
 - Rebuilt **Mijn Bezorging** to match the original PostNL delivery widget layout, spacing, typography, package header and delivery timeline.
-- Bundled the original animated PostNL delivery van GIF unchanged, together with the matching `van-1.svg`, `package.svg` and `icon.svg` assets.
-- Delivery-window calculations now use the Home Assistant time zone so the progress line and time markers stay aligned with the displayed delivery window.
-- Removed the **Laatste poststuk** Lovelace card.
-- Removed the **Mijn Bezorging image** Lovelace card.
-- The integration now exposes exactly three built-in cards: **Mijn Post**, **Mijn Pakketten** and **Mijn Bezorging**.
+- Reworked the animated PostNL delivery van to match the original widget concept: a stationary PostNL van with the scenery moving behind it.
+- Delivery-window calculations use the Home Assistant time zone so the progress line and time markers stay aligned with the displayed delivery window.
+- Removed the **Laatste poststuk** Lovelace card from the dashboard card picker.
+- Removed the **Mijn Bezorging image** Lovelace card from the dashboard card picker.
+- The integration now exposes exactly three built-in dashboard cards: **Mijn Post**, **Mijn Pakketten** and **Mijn Bezorging**.
 
 ## 1.0.1
 
@@ -23,12 +23,10 @@
 - First stable Home Assistant release.
 - Added local PostNL brand assets for the Home Assistant integration picker and device/service UI.
 - Added the PostNL Home Assistant Login Helper and linked it directly from the setup flow.
-- Setup instructions now explain how to load the Chrome extension, sign in to PostNL, copy the captured callback and finish setup in Home Assistant.
-- Added five built-in Lovelace cards: **Mijn Post**, **Mijn Pakketten**, **Mijn Bezorging**, **Laatste poststuk** and **Mijn Bezorging image**.
-- Updated the Lovelace cards to use the supplied PostNL `icon.svg`, `van-1.svg`, package asset and the supplied animated PostNL van GIF.
+- Setup instructions explain how to load the Chrome extension, sign in to PostNL, copy the captured callback and finish setup in Home Assistant.
+- Added built-in Lovelace cards for PostNL mail, parcels and delivery.
 - Added PostNL post-item scans through the authenticated Home Assistant WebSocket API.
 - Added package detail popups and delivery-window visualization.
-- Removed references to unrelated smart-home platforms from the integration, documentation and login helper.
 - HACS and Hassfest repository validation included.
 
 ## 0.1.0
