@@ -7,7 +7,7 @@
   const ICON = `${BASE}/icon.svg`;
   const VAN = `${BASE}/postnl-van.gif`;
   const VAN_STATIC = `${BASE}/van-1.svg`;
-  const PACKAGE = "https://raw.githubusercontent.com/LRvdLinden/nl.lrvdlinden.postnl/v1.2.0/widgets/pakket-details/public/package.svg";
+  const PACKAGE = `${BASE}/package.svg`;
   const imageCache = new Map();
 
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
