@@ -52,3 +52,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view 1.0.0 >/dev/null 2>&1 || gh release create 1.0.0 --target main --title "v1.0.0" --notes "PostNL for Home Assistant v1.0.0: PostNL branding, Chrome login helper, five Lovelace cards, animated delivery van and HACS/Home Assistant validation."
+      - name: Clean legacy preview release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release edit 0.1.0 --notes "Initial Home Assistant preview release." || true
