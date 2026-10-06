@@ -1,5 +1,6 @@
 <p align="center">
-  <img src="custom_components/postnl_lrvdlinden/brand/icon.png" alt="PostNL" width="180">
+  <img src="<img width="240" height="240" alt="12b75a25-5f18-4030-97f6-b5e530b8fa75" src="https://github.com/user-attachments/assets/087eb1db-16ee-4020-a87c-50374298991e" />
+" alt="PostNL" width="180">
 </p>
 
 <h1 align="center">PostNL for Home Assistant</h1>
