@@ -1,144 +1,123 @@
 <p align="center">
-  <img src="custom_components/postnl_lrvdlinden/brand/icon.png" alt="PostNL" width="180">
+  <img src="custom_components/postnl_lrvdlinden/brand/logo.png" alt="PostNL" width="180">
 </p>
 
 <h1 align="center">PostNL for Home Assistant</h1>
 
 <p align="center">
-  Bring <strong>Mijn Post</strong> and <strong>Mijn Pakketten</strong> into Home Assistant, including mail scans, parcel details, delivery windows, events and dedicated PostNL Lovelace cards.
+  Bring <strong>Mijn Post</strong>, <strong>Mijn Pakketten</strong> and <strong>Mijn Bezorging</strong> into Home Assistant, including scanned mail items and dedicated PostNL Lovelace cards.
 </p>
 
 <p align="center">
-  <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-41BDF5.svg">
-  <img alt="Home Assistant 2026.6+" src="https://img.shields.io/badge/Home%20Assistant-2026.6%2B-18BCF2.svg">
-  <img alt="Version 1.0.1" src="https://img.shields.io/badge/version-1.0.1-orange.svg">
-  <img alt="GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-blue.svg">
+  <img alt="Version" src="https://img.shields.io/badge/version-1.0.2-blue">
+  <img alt="Home Assistant" src="https://img.shields.io/badge/Home%20Assistant-2026.6%2B-41BDF5">
+  <img alt="HACS" src="https://img.shields.io/badge/HACS-Custom%20Integration-41BDF5">
 </p>
 
 ---
 
 ## Features
 
-- 📬 **Mijn Post** with scanned mail-item images.
-- 📦 **Mijn Pakketten** with Track & Trace enrichment.
-- 🚚 Delivery date and delivery-window information.
-- 🔎 Package status, sender, recipient, tracking code, shipment type and latest event.
-- 🔔 Home Assistant events for new mail, new parcels, status changes, delivery windows, expired sessions and synchronization errors.
-- 🔄 Manual **Refresh** button and `postnl_lrvdlinden.refresh` action.
-- 🔐 PostNL account linking with PKCE and the dedicated Chrome login helper.
-- 🖼️ Five built-in PostNL Lovelace cards.
-- 🌗 Light and dark mode support.
-- 🧡 Local PostNL branding for the Home Assistant integration UI.
-
-Mail scans are retrieved through an authenticated Home Assistant WebSocket command instead of being stored as large base64 attributes in the recorder.
-
----
-
-## Install with HACS
-
-1. Open **HACS → Integrations**.
-2. Open the menu in the top-right and choose **Custom repositories**.
-3. Add `https://github.com/LRvdLinden/nl.lrvdlinden.postnl-ha` as type **Integration**.
-4. Install **PostNL for Home Assistant**.
-5. Restart Home Assistant.
-6. Go to **Settings → Devices & services → Add integration → PostNL**.
-
-The Lovelace module is served and registered automatically by the integration. No separate `/config/www/postnl` folder and no manually configured dashboard resource are required.
-
-After updating from **1.0.0** to **1.0.1**, restart Home Assistant and refresh the browser once. The frontend URL is versioned so Home Assistant loads the corrected Lovelace bundle instead of a cached copy.
-
----
-
-## Linking your PostNL account
-
-The PostNL callback is captured with the dedicated **PostNL Home Assistant Login Helper** for Google Chrome.
-
-1. [**Download the PostNL Home Assistant Login Helper**](https://github.com/LRvdLinden/nl.lrvdlinden.postnl-ha/raw/main/tools/PostNL-Home-Assistant-Login-Helper.zip) and extract the ZIP file.
-2. Open `chrome://extensions`.
-3. Enable **Developer mode**.
-4. Choose **Load unpacked** and select the extracted helper folder.
-5. In Home Assistant, go to **Settings → Devices & services → Add integration → PostNL**.
-6. Open the PostNL sign-in link shown by Home Assistant and sign in to your PostNL account.
-7. The helper automatically captures the `postnl://login?...` callback.
-8. Click the helper icon in Chrome and choose **Copy callback**.
-9. Return to Home Assistant, paste the callback into the setup form and complete the sign-in process.
-
-The callback, authorization code and tokens are not written to Home Assistant logs.
-
----
-
-## Lovelace cards
-
-All cards are registered automatically and appear in the dashboard card picker. Since **1.0.1**, the picker no longer tries to render live PostNL previews while you are choosing a card, so the cards remain immediately selectable.
-
-| Card | Lovelace type | Purpose |
-|---|---|---|
-| **Mijn Post** | `custom:postnl-mail-card` | Recent mail items with PostNL scan images |
-| **Laatste poststuk** | `custom:postnl-latest-mail-card` | Large view of the newest mail scan |
-| **Mijn Pakketten** | `custom:postnl-packages-card` | Recent parcels, status and parcel details |
-| **Mijn Bezorging** | `custom:postnl-delivery-card` | Current delivery with delivery information and animated PostNL van |
-| **Mijn Bezorging image** | `custom:postnl-delivery-image-card` | Square delivery image-style card |
-
-### YAML examples
-
-```yaml
-type: custom:postnl-mail-card
-```
-
-```yaml
-type: custom:postnl-latest-mail-card
-```
-
-```yaml
-type: custom:postnl-packages-card
-```
-
-```yaml
-type: custom:postnl-delivery-card
-```
-
-```yaml
-type: custom:postnl-delivery-image-card
-```
+- PostNL account linking using PKCE.
+- **Mijn Post** with scanned mail-item images.
+- **Mijn Pakketten** with Track & Trace enrichment.
+- Sensors for counts, package status, delivery date, delivery window, sender, receiver, tracking information and last update.
+- Binary sensors for expected mail, delivered parcels and connection status.
+- Manual **Refresh** button and `postnl_lrvdlinden.refresh` action.
+- Home Assistant events for new mail, new parcels, status changes, delivery windows, sync errors and expired login sessions.
+- Three built-in Lovelace cards:
+  - **Mijn Post**
+  - **Mijn Pakketten**
+  - **Mijn Bezorging**
+- Local PostNL branding for the Home Assistant integration picker and device/service UI.
+- **Mijn Bezorging** uses the original PostNL layout, timeline and animated delivery van.
 
 <p align="center">
   <img src="custom_components/postnl_lrvdlinden/frontend/postnl-van.gif" alt="PostNL delivery van" width="420">
 </p>
 
-The dashboard frontend includes the supplied PostNL `icon.svg`, `van-1.svg` and animated delivery van so the cards keep the PostNL visual style.
+Mail-item scans are not stored in the recorder as large base64 attributes. The Lovelace cards retrieve them through an authenticated Home Assistant WebSocket command.
 
----
+## Installing via HACS
 
-## Branding
+1. Open **HACS → Integrations**.
+2. Add `LRvdLinden/nl.lrvdlinden.postnl-ha` as a custom repository of type **Integration**.
+3. Install **PostNL for Home Assistant**.
+4. Restart Home Assistant.
+5. Go to **Settings → Devices & services → Add Integration → PostNL**.
 
-The integration ships its PostNL icon and logo in `custom_components/postnl_lrvdlinden/brand/`, which is the Home Assistant 2026.3+ local-brand format. Home Assistant itself can therefore display the PostNL branding without a separate brands repository.
+The Lovelace module is served and registered automatically by the integration. A separate `/config/www/postnl` folder or manually configured dashboard resource is not required.
 
-Some HACS versions still show a generic placeholder for custom-integration icons even when the local Home Assistant brand icon is installed correctly. That is a HACS frontend limitation rather than a missing icon in this repository.
+## Linking your PostNL account
 
----
+The recommended method is the included **PostNL Home Assistant Login Helper** for Google Chrome.
 
-## Entities
+1. [**Download the PostNL Home Assistant Login Helper**](https://github.com/LRvdLinden/nl.lrvdlinden.postnl-ha/raw/main/tools/PostNL-Home-Assistant-Login-Helper.zip) and extract the ZIP file.
+2. Open `chrome://extensions`, enable **Developer mode**, and select **Load unpacked**.
+3. Select the extracted helper folder.
+4. In Home Assistant, go to **Settings → Devices & services → Add integration → PostNL**.
+5. Open the PostNL sign-in URL shown by Home Assistant and sign in to your PostNL account.
+6. The helper captures the `postnl://login?...` callback automatically. Click the extension icon and choose **Copy callback**.
+7. Return to Home Assistant, paste the callback into the PostNL setup form and complete the sign-in process.
 
-The integration exposes Home Assistant entities for mail and parcel counts, expected mail, connection state, next delivery, delivery date and window, parcel status, sender, recipient, tracking code, latest event, shipment type, last update and manual refresh.
+The callback, authorization code and tokens are not written to Home Assistant logs.
 
-These entities can be used directly in dashboards, scripts and automations alongside the included Lovelace cards.
+## Lovelace cards
 
----
+The cards are loaded automatically and appear in the dashboard card picker. YAML configuration is also supported.
+
+### Mijn Post
+
+```yaml
+type: custom:postnl-mail-card
+```
+
+### Mijn Pakketten
+
+```yaml
+type: custom:postnl-packages-card
+```
+
+### Mijn Bezorging
+
+```yaml
+type: custom:postnl-delivery-card
+```
 
 ## Manual installation
 
-Copy `custom_components/postnl_lrvdlinden` to `/config/custom_components/postnl_lrvdlinden`, restart Home Assistant and add **PostNL** from **Settings → Devices & services**.
+Copy:
 
----
+```text
+custom_components/postnl_lrvdlinden
+```
+
+to:
+
+```text
+/config/custom_components/postnl_lrvdlinden
+```
+
+Restart Home Assistant and add **PostNL** from **Settings → Devices & services**.
+
+## Branding
+
+Home Assistant 2026.3 and newer can load brand assets directly from a custom integration. This repository includes the PostNL icon and logo under:
+
+```text
+custom_components/postnl_lrvdlinden/brand/
+```
+
+The same branding assets are also included at repository root for compatibility with repository browsers and community tooling.
 
 ## Compatibility
 
-- Minimum Home Assistant version: **2026.6.0**.
-- The integration uses PostNL interfaces that are not publicly documented and may be changed by PostNL at any time.
-- This project is not affiliated with or endorsed by PostNL.
+Minimum Home Assistant version: **2026.6.0**.
+
+The PostNL interfaces used by this integration are not publicly documented and may be changed by PostNL at any time.
 
 ---
 
 ## Contribution
 
-If you appreciate this integration, you can support future development through [PayPal](https://lrvdlinden.app/donate.html), [iDEAL](https://lrvdlinden.app/donate.html) or [Bunq.me](https://lrvdlinden.app/donate.html). Your support helps keep development moving. ✨🚀
+If you appreciate this integration, you can support future development via [PayPal, iDEAL or Bunq.me](https://lrvdlinden.app/donate.html). Your support helps keep development moving. ✨🚀
