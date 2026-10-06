@@ -1,0 +1,14 @@
+{
+  "domain": "postnl_lrvdlinden",
+  "name": "PostNL",
+  "codeowners": ["@LRvdLinden"],
+  "config_flow": true,
+  "documentation": "https://github.com/LRvdLinden/nl.lrvdlinden.postnl-ha",
+  "iot_class": "cloud_polling",
+  "integration_type": "service",
+  "issue_tracker": "https://github.com/LRvdLinden/nl.lrvdlinden.postnl-ha/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0",
+  "dependencies": ["frontend", "http"]
+}

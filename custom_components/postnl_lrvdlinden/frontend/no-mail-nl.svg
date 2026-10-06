@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <rect width="640" height="360" rx="28" fill="#f4f4f4"/>
+  <g transform="translate(220 82)">
+    <rect x="0" y="0" width="200" height="140" rx="18" fill="#fff" stroke="#ea5b0c" stroke-width="10"/>
+    <path d="M10 18l90 70 90-70" fill="none" stroke="#ea5b0c" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="320" y="290" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#333">Geen poststuk beschikbaar</text>
+</svg>

@@ -1,0 +1,40 @@
+{
+  "title": "PostNL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect your PostNL account",
+        "description": "First open [PostNL sign in]({auth_url}). Sign in. After login the browser tries to open `postnl://login?...`. Copy that complete callback URL and paste it below.",
+        "data": {"callback_url": "PostNL callback URL"},
+        "data_description": {"callback_url": "The complete URL starting with postnl://login?code=..."}
+      },
+      "reauth_confirm": {
+        "title": "Sign in to PostNL again",
+        "description": "Your PostNL session expired. Open [PostNL sign in]({auth_url}), sign in and paste the complete `postnl://login?...` callback URL below.",
+        "data": {"callback_url": "PostNL callback URL"}
+      }
+    },
+    "error": {
+      "invalid_auth": "The PostNL sign-in is invalid or expired. Try again.",
+      "cannot_connect": "Unable to reach PostNL or process the callback. Try again."
+    },
+    "abort": {"already_configured": "This PostNL account is already configured."}
+  },
+  "entity": {
+    "sensor": {
+      "mail_count": {"name": "Mail items"},
+      "package_count": {"name": "Packages"},
+      "next_delivery": {"name": "Next delivery"},
+      "delivery_date": {"name": "Delivery date"},
+      "delivery_window": {"name": "Delivery window"},
+      "package_status": {"name": "Package status"},
+      "package_sender": {"name": "Sender"},
+      "package_receiver": {"name": "Receiver"},
+      "package_tracking": {"name": "Tracking"},
+      "package_event": {"name": "Latest event"},
+      "package_status_time": {"name": "Status time"},
+      "shipment_type": {"name": "Shipment type"},
+      "last_update": {"name": "Last update"}
+    }
+  }
+}
