@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.4
+
+- Updated **Mijn Bezorging** to use the same Home Assistant card background as **Mijn Post** and **Mijn Pakketten**.
+- The delivery header, empty-state area and active-delivery panel now follow the current Home Assistant theme instead of using a separate fixed grey background.
+- Dark mode now follows Home Assistant theme colors as well.
+- Bumped the Lovelace frontend bundle to `postnl-card-v104.js` to avoid stale browser caching.
+
 ## 1.0.3
 
 - Fixed **Mijn Bezorging** staying on the last delivered parcel.
