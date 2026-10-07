@@ -48,7 +48,7 @@ jobs:
           from PIL import Image, ImageDraw
 
           root = Path('custom_components/postnl_lrvdlinden/frontend')
-          js = root / 'postnl-card-v103.js'
+          js = root / 'postnl-card-v104.js'
           text = js.read_text(encoding='utf-8')
           text = text.replace(
               'const PACKAGE = "https://raw.githubusercontent.com/LRvdLinden/nl.lrvdlinden.postnl/v1.2.0/widgets/pakket-details/public/package.svg";',
@@ -98,7 +98,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$FRONTEND/package.svg" "$FRONTEND/postnl-van.gif" "$FRONTEND/postnl-card-v103.js"
+          git add "$FRONTEND/package.svg" "$FRONTEND/postnl-van.gif" "$FRONTEND/postnl-card-v104.js"
           git diff --cached --quiet || git commit -m "Finalize My Delivery assets for v1.0.2"
           git push
 
@@ -106,7 +106,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          js = Path('custom_components/postnl_lrvdlinden/frontend/postnl-card-v103.js').read_text()
+          js = Path('custom_components/postnl_lrvdlinden/frontend/postnl-card-v104.js').read_text()
           assert 'postnl-mail-card' in js
           assert 'postnl-packages-card' in js
           assert 'postnl-delivery-card' in js
