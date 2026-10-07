@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3
+
+- Fixed **Mijn Bezorging** staying on the last delivered parcel.
+- Once the active parcel is marked as delivered and no other active parcel exists, the card now immediately returns to the **Er is geen pakket onderweg** fallback with the static PostNL van image.
+- The delivery card now prefers the backend-provided `active_package` and never falls back to an already delivered package.
+- Bumped the Lovelace bundle to `postnl-card-v103.js` to avoid stale browser caching.
+
 ## 1.0.2
 
 - Rebuilt **Mijn Bezorging** to match the original PostNL delivery widget layout, spacing, typography, package header and delivery timeline.
