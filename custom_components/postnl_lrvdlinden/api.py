@@ -1,4 +1,4 @@
-"""PostNL API client, ported from PostNL for Homey v1.2.0."""
+"""PostNL API client, ported from PostNL for Homey v1.2.8."""
 from __future__ import annotations
 
 import asyncio
@@ -12,11 +12,16 @@ from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable
 from urllib.parse import parse_qs, quote, urlencode, urlparse
 
-from aiohttp import ClientResponse, ClientSession
+from aiohttp import ClientResponse, ClientSession, ClientTimeout, DummyCookieJar
+from yarl import URL
 
 from .const import (
     AUTH_URL,
+    CAPTURE_CLIENT_ID,
+    CAPTURE_FLOW_VERSION,
     CLIENT_ID,
+    LOGIN_USER_AGENT,
+    TENANT,
     GRAPHQL_URL,
     MYMAIL_URL,
     REDIRECT_URI,
@@ -107,6 +112,221 @@ class PostNLApi:
                 "redirect_uri": REDIRECT_URI,
                 "code_verifier": verifier,
                 "client_id": CLIENT_ID,
+            }
+        )
+        await self._save_token(token)
+        return self.auth
+
+    # ------------------------------------------------------------------
+    # Direct e-mail/password login (ported from PostNL for Homey 1.2.6+)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _capture_cookies(response: ClientResponse, jar: dict[str, str]) -> None:
+        for line in response.headers.getall("Set-Cookie", []):
+            for chunk in re.split(r",\s*(?=[^;,=\s]+=)", str(line)):
+                first = chunk.split(";", 1)[0].strip()
+                if "=" not in first:
+                    continue
+                name, value = first.split("=", 1)
+                if name and not re.match(r"^(expires|path|domain|max-age|samesite|secure|httponly)$", name, re.I):
+                    jar[name] = value
+
+    async def _fetch_with_jar(
+        self,
+        session: ClientSession,
+        url: str,
+        jar: dict[str, str],
+        *,
+        method: str = "GET",
+        headers: dict[str, str] | None = None,
+        data: dict[str, str] | None = None,
+        max_redirects: int = 12,
+    ) -> tuple[ClientResponse, str, str]:
+        """Follow redirects manually so every hop carries our own cookie jar.
+
+        Returns the final response, the URL it came from and its body text.
+        """
+        target = str(url)
+        req_headers = dict(headers or {})
+        body = data
+        for hop in range(max_redirects + 1):
+            send_headers = dict(req_headers)
+            if jar:
+                send_headers["Cookie"] = "; ".join(f"{k}={v}" for k, v in jar.items())
+            async with session.request(
+                method,
+                URL(target, encoded=True),
+                headers=send_headers,
+                data=body,
+                allow_redirects=False,
+            ) as response:
+                self._capture_cookies(response, jar)
+                text = await response.text(errors="replace")
+                location = response.headers.get("Location") or response.headers.get("location")
+                if response.status not in (301, 302, 303, 307, 308) or hop >= max_redirects or not location:
+                    return response, target, text
+            next_url = str(URL(target).join(URL(location, encoded=True))) if not location.startswith(("http://", "https://")) else location
+            if not next_url.startswith(("http://", "https://")):
+                # Custom scheme (postnl://login?...) – stop and expose it to the caller.
+                return response, next_url, text
+            target = next_url
+            if response.status in (301, 302, 303) and method != "GET":
+                method = "GET"
+                body = None
+                req_headers = {k: v for k, v in req_headers.items() if not k.lower().startswith("content-")}
+        raise PostNLAuthError("Te veel redirects tijdens PostNL-login", 502, "AUTH_LOGIN_CHANGED")
+
+    @staticmethod
+    def _login_js_value(body: str, key: str) -> str:
+        match = re.search(re.escape(key) + r"""\s*["']([^"']+)["']""", str(body or ""))
+        return match.group(1) if match else ""
+
+    @staticmethod
+    def _login_json_value(body: str, key: str) -> str:
+        match = re.search(r'"' + re.escape(key) + r'"\s*:\s*"([^"]+)"', str(body or ""))
+        return match.group(1) if match else ""
+
+    async def login_with_password(self, username: str, password: str) -> dict[str, Any]:
+        """Sign in with PostNL e-mail/password and exchange the result for app tokens.
+
+        The password is only used for this request chain and is never stored.
+        """
+        email = str(username or "").strip()
+        secret = str(password or "")
+        if not email or not secret:
+            raise PostNLAuthError("Vul je PostNL e-mailadres en wachtwoord in", 400, "AUTH_INVALID")
+
+        verifier = self._b64url(os.urandom(96))
+        challenge = self._b64url(hashlib.sha256(verifier.encode()).digest())
+        state = self._b64url(os.urandom(24))
+        authorize = f"{AUTH_URL}?" + urlencode(
+            {
+                "client_id": CLIENT_ID,
+                "response_type": "code",
+                "scope": SCOPE,
+                "redirect_uri": REDIRECT_URI,
+                "state": state,
+                "nonce": state,
+                "code_challenge": challenge,
+                "code_challenge_method": "S256",
+            }
+        )
+        origin = f"{urlparse(AUTH_URL).scheme}://{urlparse(AUTH_URL).netloc}"
+        ua = {"User-Agent": LOGIN_USER_AGENT}
+        jar: dict[str, str] = {}
+
+        # A private session without a shared cookie jar: PostNL login cookies must
+        # never leak into Home Assistant's shared aiohttp session.
+        async with ClientSession(cookie_jar=DummyCookieJar(), timeout=ClientTimeout(total=45)) as session:
+            _, login_url, body = await self._fetch_with_jar(session, authorize, jar, headers=ua)
+            csrf = jar.get("_csrf_token") or self._login_js_value(body, "aicCsrf:")
+            if not csrf:
+                raise PostNLAuthError("PostNL-login kon geen beveiligingstoken vinden", 502, "AUTH_LOGIN_CHANGED")
+
+            transaction_id = self._b64url(os.urandom(30))
+            await self._fetch_with_jar(
+                session,
+                f"{origin}/widget/traditional_signin.jsonp",
+                jar,
+                method="POST",
+                headers={
+                    **ua,
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Origin": origin,
+                    "Referer": login_url,
+                },
+                data={
+                    "utf8": "✓",
+                    "signInEmailAddress": email,
+                    "currentPassword": secret,
+                    "capture_screen": "signIn",
+                    "js_version": "d445bf4",
+                    "capture_transactionId": transaction_id,
+                    "form": "signInForm",
+                    "flow": "standard",
+                    "client_id": CAPTURE_CLIENT_ID,
+                    "redirect_uri": f"{login_url}&socialRedirect=True",
+                    "response_type": "token",
+                    "flow_version": CAPTURE_FLOW_VERSION,
+                    "settings_version": "",
+                    "locale": "en-US",
+                    "recaptchaVersion": "2",
+                },
+            )
+
+            result_url = f"{origin}/widget/get_result.jsonp?" + urlencode(
+                {"transactionId": transaction_id, "cache": str(int(time.time() * 1000))}
+            )
+            _, _, body = await self._fetch_with_jar(session, result_url, jar, headers=ua)
+            capture_token = self._login_json_value(body, "accessToken")
+            if not capture_token:
+                raise PostNLAuthError("PostNL heeft de inloggegevens niet geaccepteerd", 401, "AUTH_INVALID")
+
+            token_url = f"{origin}/{TENANT}/auth-ui/v2/token-url" + (
+                f"?{urlparse(login_url).query}" if urlparse(login_url).query else ""
+            )
+
+            async def post_token_url(referer: str, values: dict[str, str]) -> tuple[str, str]:
+                resp, _, text = await self._fetch_with_jar(
+                    session,
+                    token_url,
+                    jar,
+                    method="POST",
+                    headers={
+                        **ua,
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "Origin": origin,
+                        "Referer": referer,
+                    },
+                    data=values,
+                    max_redirects=0,
+                )
+                return resp.headers.get("Location") or "", text
+
+            auth_location, stage_body = await post_token_url(
+                login_url,
+                {
+                    "screen": "signIn",
+                    "authenticated": "True",
+                    "registering": "False",
+                    "accessToken": capture_token,
+                    "_csrf_token": csrf,
+                },
+            )
+            if not auth_location:
+                existing = self._login_js_value(stage_body, "existingToken:")
+                screen = self._login_js_value(stage_body, "screenToRender:")
+                csrf = self._login_js_value(stage_body, "aicCsrf:") or jar.get("_csrf_token") or csrf
+                if screen != "loginSuccess" or not existing or not csrf:
+                    raise PostNLAuthError("PostNL-login bereikte loginSuccess niet", 502, "AUTH_LOGIN_CHANGED")
+                auth_location, _ = await post_token_url(
+                    token_url, {"screen": "loginSuccess", "accessToken": existing, "_csrf_token": csrf}
+                )
+            if not auth_location:
+                raise PostNLAuthError("PostNL-login gaf geen autorisatie-redirect terug", 502, "AUTH_LOGIN_CHANGED")
+            if not auth_location.startswith(("http://", "https://", "postnl:")):
+                auth_location = str(URL(token_url).join(URL(auth_location, encoded=True)))
+
+            final_location = auth_location
+            if auth_location.startswith(("http://", "https://")):
+                resp, _, _ = await self._fetch_with_jar(session, auth_location, jar, headers=ua, max_redirects=0)
+                final_location = resp.headers.get("Location") or auth_location
+
+        query = parse_qs(urlparse(final_location).query)
+        code = (query.get("code") or [""])[0]
+        returned_state = (query.get("state") or [""])[0]
+        if not code:
+            raise PostNLAuthError("PostNL-login gaf geen autorisatiecode terug", 502, "AUTH_LOGIN_CHANGED")
+        if returned_state != state:
+            raise PostNLAuthError("PostNL-login beveiligingscode komt niet overeen", 400, "AUTH_STATE_MISMATCH")
+
+        token = await self._token_request(
+            {
+                "grant_type": "authorization_code",
+                "client_id": CLIENT_ID,
+                "code": code,
+                "redirect_uri": REDIRECT_URI,
+                "code_verifier": verifier,
             }
         )
         await self._save_token(token)
@@ -358,6 +578,245 @@ class PostNLApi:
             return next((v for v in colli.values() if isinstance(v, dict)), {})
         return colli if isinstance(colli, dict) else {}
 
+    # ------------------------------------------------------------------
+    # Track & Trace enrichment (ported from PostNL for Homey 1.2.7/1.2.8)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _ts(value: Any) -> float:
+        raw = str(value or "").strip()
+        if not raw:
+            return 0.0
+        try:
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            return 0.0
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.timestamp()
+
+    @staticmethod
+    def _event_time(event: dict[str, Any]) -> str:
+        return str(
+            event.get("observationDate") or event.get("dateTime") or event.get("timestamp") or event.get("timeStamp") or ""
+        ).strip()
+
+    @staticmethod
+    def _event_description(event: dict[str, Any]) -> str:
+        return str(
+            event.get("description") or event.get("message") or event.get("status") or event.get("eventDescription") or ""
+        ).strip()
+
+    @staticmethod
+    def _number(value: Any) -> float | None:
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        match = re.search(r"-?\d+(?:\.\d+)?", str(value if value is not None else "").replace(",", "."))
+        return float(match.group(0)) if match else None
+
+    @staticmethod
+    def _fmt(value: float | None, decimals: int = 1) -> str:
+        if value is None:
+            return ""
+        rounded = round(value, decimals)
+        text = str(int(rounded)) if float(rounded).is_integer() else str(rounded)
+        return text.replace(".", ",")
+
+    @classmethod
+    def _physical_properties(cls, colli: dict[str, Any]) -> dict[str, Any]:
+        """Normalise PostNL weight (grams) and dimensions (millimetres) to kg / cm."""
+        entries: list[tuple[str, str, Any]] = []
+        seen: set[int] = set()
+
+        def walk(value: Any, path: str = "") -> None:
+            if not isinstance(value, (dict, list)) or id(value) in seen:
+                return
+            seen.add(id(value))
+            items = enumerate(value) if isinstance(value, list) else value.items()
+            for key, child in items:
+                next_path = f"{path}[{key}]" if isinstance(value, list) else (f"{path}.{key}" if path else str(key))
+                if not isinstance(child, (dict, list)) and child is not None:
+                    entries.append((str(key).lower(), next_path.lower(), child))
+                walk(child, next_path)
+
+        walk(colli)
+
+        def find(patterns: list[str]) -> tuple[str, str, Any] | None:
+            for pattern in patterns:
+                rx = re.compile(pattern, re.I)
+                for entry in entries:
+                    if (rx.search(entry[0]) or rx.search(entry[1])) and entry[2] not in ("", None):
+                        return entry
+            return None
+
+        def find_native(value: Any) -> dict[str, Any] | None:
+            if isinstance(value, dict):
+                if all(cls._number(value.get(k)) is not None for k in ("depth", "width", "height")):
+                    return value
+                children = value.values()
+            elif isinstance(value, list):
+                children = value
+            else:
+                return None
+            for child in children:
+                found = find_native(child)
+                if found:
+                    return found
+            return None
+
+        native = find_native(colli)
+
+        weight_entry = find(
+            [
+                r"^(weightingrams|weightingram|weightgram|weightgrams|parcelweight|weight|mass|gewicht)$",
+                r"(?:physicalproperties|parcelcharacteristics|characteristics|measurements|dimensions|shipment).*\.(?:weight|mass|gewicht)",
+            ]
+        )
+        weight_g: float | None = None
+        if weight_entry is not None:
+            raw = str(weight_entry[2]).strip()
+            n = cls._number(weight_entry[2])
+            if n is not None:
+                if re.search(r"\bkg\b", raw, re.I):
+                    weight_g = n * 1000
+                elif re.search(r"\b(?:g|gram|grams)\b", raw, re.I):
+                    weight_g = n
+                elif re.search(r"weightkg|kilogram", weight_entry[1], re.I):
+                    weight_g = n * 1000
+                else:
+                    weight_g = n  # PostNL native weight is grams.
+        if weight_g is None and native and cls._number(native.get("weight")) is not None:
+            weight_g = cls._number(native.get("weight"))
+
+        length_e = find([r"^(length|lengte|depth|longside)$", r"(?:dimensions?|measurements?|physicalproperties).*\.(?:length|lengte|depth|longside)"])
+        width_e = find([r"^(width|breedte|shortside)$", r"(?:dimensions?|measurements?|physicalproperties).*\.(?:width|breedte|shortside)"])
+        height_e = find([r"^(height|hoogte)$", r"(?:dimensions?|measurements?|physicalproperties).*\.(?:height|hoogte)"])
+        unit_e = find([r"^(dimensionunit|dimensionsunit|unitofmeasure|unit)$"])
+
+        length = cls._number(length_e[2]) if length_e else None
+        width = cls._number(width_e[2]) if width_e else None
+        height = cls._number(height_e[2]) if height_e else None
+        unit = str(unit_e[2] if unit_e else "").strip().lower()
+        unit = re.sub(r"centimet(?:er|re)s?", "cm", unit)
+        unit = re.sub(r"millimet(?:er|re)s?", "mm", unit)
+
+        if native:
+            length, width, height = (cls._number(native.get(k)) for k in ("depth", "width", "height"))
+            unit = "mm"
+        elif not unit and None not in (length, width, height):
+            if max(length, width, height) >= 100:  # type: ignore[type-var]
+                unit = "mm"
+
+        def to_cm(value: float | None) -> float | None:
+            if value is None:
+                return None
+            if unit == "mm":
+                return round(value / 10, 2)
+            if unit == "m":
+                return round(value * 100, 2)
+            return value
+
+        length_cm, width_cm, height_cm = to_cm(length), to_cm(width), to_cm(height)
+        dimensions = ""
+        if None not in (length_cm, width_cm, height_cm):
+            dimensions = f"{cls._fmt(length_cm)} x {cls._fmt(width_cm)} x {cls._fmt(height_cm)} cm"
+        else:
+            direct = find([r"^(dimensions?|afmetingen)$", r"(?:physicalproperties|parcelcharacteristics|characteristics|measurements).*\.dimensions?$"])
+            if direct is not None:
+                dimensions = str(direct[2]).strip()
+
+        return {
+            "weightKg": round(weight_g / 1000, 3) if weight_g is not None else None,
+            "weight": f"{cls._fmt(weight_g)} gram" if weight_g is not None else "",
+            "dimensions": dimensions,
+            "lengthCm": length_cm,
+            "widthCm": width_cm,
+            "heightCm": height_cm,
+        }
+
+    _OBSERVATION_STATUS: dict[str, str] = {
+        **dict.fromkeys(["A01", "A03", "M02"], "registered"),
+        **dict.fromkeys(
+            ["B01", "C02", "F01", "J01", "R01", "J04", "J21", "J31", "J32", "J30", "J39", "J40", "J46", "J44", "J55",
+             "X01", "X02", "X03", "X04", "X08", "X19", "A21", "I07", "G01", "G05", "K01", "K70", "T04"],
+            "in_transit",
+        ),
+        "J05": "out_for_delivery",
+        **dict.fromkeys(["I08", "J02", "J12", "J23"], "at_pickup_point"),
+        **dict.fromkeys(["A80", "I01", "I02", "I05", "I11", "I12", "Z01"], "delivered"),
+    }
+    _META_CODES = {"A04", "A18", "A19", "A24", "A25", "A65", "A94", "A95", "A96", "A98", "A20", "B03", "J09", "K33", "K50", "P21"}
+
+    @classmethod
+    def _observation_status(cls, code: Any) -> str:
+        return cls._OBSERVATION_STATUS.get(str(code or "").strip().upper(), "")
+
+    @classmethod
+    def _canonical_status(cls, delivered: bool, status_raw: str, observations: list[dict[str, Any]]) -> str:
+        if delivered:
+            return "delivered"
+        last = ""
+        for obs in observations:
+            mapped = cls._observation_status(obs.get("observationCode") or obs.get("code"))
+            if mapped:
+                last = mapped
+        if last:
+            return last
+        raw = str(status_raw or "").lower().replace("-", " ")
+        patterns = [
+            (["ligt klaar bij postnl punt", "afgeleverd op postnl punt", "klaar bij postnl punt"], "at_pickup_point"),
+            (["teruggestuurd", "retour"], "returning"),
+            (["wordt vandaag bezorgd", "onderweg naar het bezorgadres", "onderweg naar de bezorger", "bezorger is onderweg"], "out_for_delivery"),
+            (["aangemeld", "verwacht"], "registered"),
+            (["bezorgmoment is bijgewerkt", "lukt vandaag niet", "duurt de bezorging wat langer", "ontvangen", "gesorteerd",
+              "onderweg", "klaar voor verzending", "de grens over", "aangekomen in het land van bestemming"], "in_transit"),
+            (["bezorgd bij de ontvanger", "bezorgd", "afgehaald"], "delivered"),
+        ]
+        for needles, status in patterns:
+            if any(n in raw for n in needles):
+                return status
+        return "unknown"
+
+    @classmethod
+    def _observations(cls, colli: dict[str, Any]) -> list[dict[str, Any]]:
+        analytics = colli.get("analyticsInfo") if isinstance(colli.get("analyticsInfo"), dict) else {}
+        source = analytics.get("allObservations") if isinstance(analytics.get("allObservations"), list) and analytics.get("allObservations") else colli.get("observations")
+        items = [x for x in (source or []) if isinstance(x, dict)]
+        return sorted(items, key=lambda o: cls._ts(cls._event_time(o)))
+
+    @classmethod
+    def _status_history(cls, observations: list[dict[str, Any]], max_events: int = 20) -> list[dict[str, Any]]:
+        stage = "registered"
+        history = []
+        for obs in observations:
+            code = str(obs.get("observationCode") or obs.get("code") or "").strip()
+            mapped = cls._observation_status(code)
+            if mapped:
+                stage = mapped
+            history.append(
+                {
+                    "timestamp": cls._event_time(obs),
+                    "status": mapped or (stage if code in cls._META_CODES else None),
+                    "raw_status": cls._event_description(obs),
+                    "observation_code": code,
+                }
+            )
+        history = [h for h in history if h["timestamp"] or h["raw_status"] or h["observation_code"]]
+        return history[-max_events:]
+
+    @staticmethod
+    def _status_means_delivered(status: str) -> bool:
+        """True for "Bezorgd"/"Afgehaald", but not for "wordt vandaag bezorgd" or "niet bezorgd"."""
+        text = str(status or "").lower()
+        if not re.search(r"\b(bezorgd|afgehaald)\b", text):
+            return False
+        return not re.search(r"\b(wordt|worden|verwacht|niet|kan|kon|lukt)\b", text)
+
+    async def refresh_package_tracking(self, parcel: dict[str, Any]) -> dict[str, Any]:
+        """Re-fetch Track & Trace for a single parcel (used when it leaves the account feed)."""
+        return await self._enrich_package_tracking(dict(parcel or {}))
+
     async def _enrich_package_tracking(self, parcel: dict[str, Any]) -> dict[str, Any]:
         detail = await self._fetch_tracking_detail(parcel)
         if not detail:
@@ -366,16 +825,23 @@ class PostNLApi:
         if not colli:
             return parcel
         phase = colli.get("statusPhase") if isinstance(colli.get("statusPhase"), dict) else {}
-        raw_events = list(colli.get("events") or []) + list(colli.get("observations") or [])
+        observations = self._observations(colli)
         events = []
-        for event in raw_events:
-            description = str(event.get("description") or event.get("message") or event.get("status") or event.get("eventDescription") or "").strip()
-            timestamp = str(event.get("observationDate") or event.get("dateTime") or event.get("timestamp") or event.get("timeStamp") or "").strip()
+        for event in [*(x for x in (colli.get("events") or []) if isinstance(x, dict)), *observations]:
+            description = self._event_description(event)
+            timestamp = self._event_time(event)
             location_raw = event.get("location")
             location = str(location_raw.get("name") or "") if isinstance(location_raw, dict) else str(location_raw or "")
             if description or timestamp:
-                events.append({"description": description, "timestamp": timestamp, "location": location})
-        events.sort(key=lambda x: x.get("timestamp") or "")
+                events.append(
+                    {
+                        "description": description,
+                        "timestamp": timestamp,
+                        "observationCode": str(event.get("observationCode") or event.get("code") or ""),
+                        "location": location,
+                    }
+                )
+        events.sort(key=lambda x: self._ts(x.get("timestamp")))
         latest = events[-1] if events else {}
         status = str(phase.get("message") or latest.get("description") or parcel.get("status") or "").strip()
         status_code = str(phase.get("code") or phase.get("status") or phase.get("phase") or phase.get("id") or "").strip()
@@ -384,6 +850,14 @@ class PostNLApi:
         eta = colli.get("eta") if isinstance(colli.get("eta"), dict) else {}
         eta_from = eta.get("start") or colli.get("expectedDeliveryDate") or parcel.get("deliveryWindowFrom")
         eta_to = eta.get("end") or parcel.get("deliveryWindowTo")
+        delivered = bool(parcel.get("delivered") or self._status_means_delivered(status))
+        physical = self._physical_properties(colli)
+        pickup_point = ""
+        for key in ("pickupPoint", "servicePoint", "deliveryLocation"):
+            value = colli.get(key)
+            if isinstance(value, dict) and value.get("name"):
+                pickup_point = str(value["name"])
+                break
         return {
             **parcel,
             "status": status or parcel.get("status"),
@@ -391,13 +865,26 @@ class PostNLApi:
             "statusCode": status_code,
             "statusChangedAt": status_changed,
             "latestStatusEvent": latest_event,
-            "statusEvents": events,
-            "statusFingerprint": "|".join([status, status_code, status_changed, latest_event, str(len(events))]),
-            "delivered": bool(parcel.get("delivered") or re.search(r"\b(bezorgd|afgehaald)\b", status, re.I)),
+            "statusEvents": events[-40:],
+            "statusFingerprint": "|".join(
+                [status, status_code, status_changed, latest_event, str(latest.get("timestamp") or ""), str(len(events))]
+            ),
+            "delivered": delivered,
             "deliveryDate": parcel.get("deliveredTimeStamp") or eta_from or parcel.get("deliveryDate"),
             "deliveryWindowFrom": eta_from,
             "deliveryWindowTo": eta_to,
             "deliveryWindow": self.format_window(eta_from, eta_to) or parcel.get("deliveryWindow") or "",
+            "weight": physical["weight"] or parcel.get("weight") or "",
+            "weightKg": physical["weightKg"],
+            "dimensions": physical["dimensions"] or parcel.get("dimensions") or "",
+            "dimensionLengthCm": physical["lengthCm"],
+            "dimensionWidthCm": physical["widthCm"],
+            "dimensionHeightCm": physical["heightCm"],
+            "statusHistory": self._status_history(observations),
+            "observationCode": str((observations[-1] if observations else {}).get("observationCode") or ""),
+            "canonicalStatus": self._canonical_status(delivered, status, observations),
+            "pickup": str(parcel.get("deliveryAddressType") or "").lower() == "servicepoint",
+            "pickupPoint": pickup_point,
         }
 
     @staticmethod
@@ -420,6 +907,17 @@ class PostNLApi:
             "latestStatusEvent": fallback,
             "statusEvents": [],
             "statusFingerprint": "|".join([fallback, str(item.get("deliveredTimeStamp") or item.get("creationDateTime") or "")]),
+            "weight": "",
+            "weightKg": None,
+            "dimensions": "",
+            "dimensionLengthCm": None,
+            "dimensionWidthCm": None,
+            "dimensionHeightCm": None,
+            "statusHistory": [],
+            "observationCode": "",
+            "canonicalStatus": "delivered" if delivered else "registered",
+            "pickup": str(item.get("deliveryAddressType") or "").lower() == "servicepoint",
+            "pickupPoint": "",
             "deliveredTimeStamp": item.get("deliveredTimeStamp"),
             "createdAt": item.get("creationDateTime"),
             "deliveryDate": item.get("deliveredTimeStamp") or item.get("deliveryWindowFrom"),

@@ -4,37 +4,138 @@
     "step": {
       "user": {
         "title": "Koppel je PostNL-account",
-        "description": "### Je PostNL-account koppelen\n\n1. [Download de PostNL Home Assistant Login Helper]({helper_url}) en pak het ZIP-bestand uit. De helper is een Google Chrome-extensie.\n2. Open `chrome://extensions`, zet **Ontwikkelaarsmodus** aan en kies **Uitgepakte extensie laden**. Selecteer de uitgepakte helpermap.\n3. Open [PostNL aanmelden]({auth_url}) en log in op je PostNL-account.\n4. De helper vangt automatisch de `postnl://login?...` callback op. Klik op het helper-icoon in Chrome en kies **Callback kopiëren**.\n5. Ga terug naar Home Assistant, plak de callback hieronder en rond het aanmelden af.",
-        "data": {"callback_url": "PostNL callback-URL"},
-        "data_description": {"callback_url": "Plak de volledige callback-URL die begint met postnl://login?code=..."}
+        "description": "Kies hoe je je PostNL-account wilt koppelen. **Inloggen met e-mail en wachtwoord** is de snelste manier en werkt hetzelfde als in de PostNL-app voor Homey.",
+        "menu_options": {
+          "credentials": "Inloggen met e-mail en wachtwoord (aanbevolen)",
+          "callback": "Inloggen via de Chrome Login Helper"
+        }
       },
       "reauth_confirm": {
         "title": "PostNL opnieuw koppelen",
-        "description": "Je PostNL-sessie is verlopen.\n\n1. Controleer dat de [PostNL Home Assistant Login Helper]({helper_url}) in Chrome is geladen.\n2. Open [PostNL aanmelden]({auth_url}) en log opnieuw in.\n3. Kopieer de opgevangen `postnl://login?...` callback uit de helper en plak hem hieronder.",
-        "data": {"callback_url": "PostNL callback-URL"}
+        "description": "Je PostNL-sessie is verlopen. Kies hoe je opnieuw wilt inloggen.",
+        "menu_options": {
+          "credentials": "Inloggen met e-mail en wachtwoord (aanbevolen)",
+          "callback": "Inloggen via de Chrome Login Helper"
+        }
+      },
+      "credentials": {
+        "title": "Inloggen bij PostNL",
+        "description": "Log in met dezelfde gegevens als op jouw.postnl.nl. Je wachtwoord wordt alleen gebruikt om bij PostNL in te loggen; Home Assistant bewaart daarna alleen de verkregen tokens, niet je wachtwoord.",
+        "data": {
+          "email": "E-mailadres",
+          "password": "Wachtwoord"
+        }
+      },
+      "callback": {
+        "title": "Inloggen via Chrome Login Helper",
+        "description": "### Je PostNL-account koppelen\n\n1. [Download de PostNL Home Assistant Login Helper]({helper_url}) en pak het ZIP-bestand uit. De helper is een Google Chrome-extensie.\n2. Open `chrome://extensions`, zet **Ontwikkelaarsmodus** aan en kies **Uitgepakte extensie laden**. Selecteer de uitgepakte helpermap.\n3. Open [PostNL aanmelden]({auth_url}) en log in op je PostNL-account.\n4. De helper vangt automatisch de `postnl://login?...` callback op. Klik op het helper-icoon in Chrome en kies **Callback kopiëren**.\n5. Ga terug naar Home Assistant, plak de callback hieronder en rond het aanmelden af.",
+        "data": {
+          "callback_url": "PostNL callback-URL"
+        },
+        "data_description": {
+          "callback_url": "Plak de volledige callback-URL die begint met postnl://login?code=..."
+        }
       }
     },
     "error": {
-      "invalid_auth": "De PostNL-aanmelding is ongeldig of verlopen. Probeer opnieuw.",
-      "cannot_connect": "Kan PostNL niet bereiken of de callback niet verwerken. Probeer opnieuw."
+      "invalid_auth": "PostNL heeft de inloggegevens niet geaccepteerd of de aanmelding is verlopen. Probeer opnieuw.",
+      "login_changed": "De PostNL-inlogpagina reageerde anders dan verwacht. Probeer het later opnieuw of kies inloggen via de Chrome Login Helper.",
+      "cannot_connect": "Kan PostNL niet bereiken. Probeer opnieuw."
     },
-    "abort": {"already_configured": "Dit PostNL-account is al geconfigureerd."}
+    "abort": {
+      "already_configured": "Dit PostNL-account is al geconfigureerd.",
+      "reauth_successful": "PostNL is opnieuw gekoppeld.",
+      "unique_id_mismatch": "Dit is een ander PostNL-account dan het account dat al gekoppeld is."
+    }
   },
   "entity": {
     "sensor": {
-      "mail_count": {"name": "Poststukken"},
-      "package_count": {"name": "Pakketten"},
-      "next_delivery": {"name": "Volgende bezorging"},
-      "delivery_date": {"name": "Bezorgdatum"},
-      "delivery_window": {"name": "Bezorgvenster"},
-      "package_status": {"name": "Pakketstatus"},
-      "package_sender": {"name": "Afzender"},
-      "package_receiver": {"name": "Ontvanger"},
-      "package_tracking": {"name": "Tracking"},
-      "package_event": {"name": "Laatste gebeurtenis"},
-      "package_status_time": {"name": "Statustijd"},
-      "shipment_type": {"name": "Type zending"},
-      "last_update": {"name": "Laatste update"}
+      "mail_count": {
+        "name": "Poststukken"
+      },
+      "package_count": {
+        "name": "Pakketten"
+      },
+      "next_delivery": {
+        "name": "Volgende bezorging"
+      },
+      "delivery_date": {
+        "name": "Bezorgdatum"
+      },
+      "delivery_window": {
+        "name": "Bezorgvenster"
+      },
+      "package_status": {
+        "name": "Pakketstatus"
+      },
+      "package_sender": {
+        "name": "Afzender"
+      },
+      "package_receiver": {
+        "name": "Ontvanger"
+      },
+      "package_tracking": {
+        "name": "Tracking"
+      },
+      "package_event": {
+        "name": "Laatste gebeurtenis"
+      },
+      "package_status_time": {
+        "name": "Statustijd"
+      },
+      "shipment_type": {
+        "name": "Type zending"
+      },
+      "last_update": {
+        "name": "Laatste update"
+      },
+      "package_canonical_status": {
+        "name": "Pakketfase",
+        "state": {
+          "registered": "Aangemeld",
+          "in_transit": "Onderweg",
+          "out_for_delivery": "Bezorger onderweg",
+          "at_pickup_point": "Ligt klaar bij PostNL-punt",
+          "delivered": "Bezorgd",
+          "returning": "Retour",
+          "unknown": "Onbekend"
+        }
+      },
+      "package_observation_code": {
+        "name": "PostNL-statuscode"
+      },
+      "package_weight": {
+        "name": "Pakketgewicht"
+      },
+      "package_dimensions": {
+        "name": "Pakketafmetingen"
+      },
+      "package_length": {
+        "name": "Pakketlengte"
+      },
+      "package_width": {
+        "name": "Pakketbreedte"
+      },
+      "package_height": {
+        "name": "Pakkethoogte"
+      },
+      "package_pickup_point": {
+        "name": "PostNL-punt"
+      }
+    },
+    "binary_sensor": {
+      "mail_expected": {
+        "name": "Post verwacht"
+      },
+      "package_delivered": {
+        "name": "Pakket bezorgd"
+      },
+      "package_pickup": {
+        "name": "Bezorging bij PostNL-punt"
+      },
+      "connected": {
+        "name": "Verbonden"
+      }
     }
   }
 }

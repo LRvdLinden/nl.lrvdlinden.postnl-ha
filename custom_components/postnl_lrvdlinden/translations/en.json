@@ -4,37 +4,138 @@
     "step": {
       "user": {
         "title": "Link your PostNL account",
-        "description": "### Linking your PostNL account\n\n1. [Download the PostNL Home Assistant Login Helper]({helper_url}) and extract the ZIP file. The helper is a Google Chrome extension.\n2. Open `chrome://extensions`, enable **Developer mode**, and choose **Load unpacked**. Select the extracted helper folder.\n3. Open [PostNL sign-in]({auth_url}) and sign in to your PostNL account.\n4. The helper automatically captures the `postnl://login?...` callback. Click the helper icon in Chrome and choose **Copy callback**.\n5. Return to Home Assistant, paste the callback below, and complete the sign-in process.",
-        "data": {"callback_url": "PostNL callback URL"},
-        "data_description": {"callback_url": "Paste the full callback URL beginning with postnl://login?code=..."}
+        "description": "Choose how to link your PostNL account. **Sign in with e-mail and password** is the quickest option and works the same as the PostNL app for Homey.",
+        "menu_options": {
+          "credentials": "Sign in with e-mail and password (recommended)",
+          "callback": "Sign in with the Chrome Login Helper"
+        }
       },
       "reauth_confirm": {
         "title": "Reconnect PostNL",
-        "description": "Your PostNL session has expired.\n\n1. Make sure the [PostNL Home Assistant Login Helper]({helper_url}) is loaded in Chrome.\n2. Open [PostNL sign-in]({auth_url}) and sign in again.\n3. Copy the captured `postnl://login?...` callback from the helper and paste it below.",
-        "data": {"callback_url": "PostNL callback URL"}
+        "description": "Your PostNL session has expired. Choose how to sign in again.",
+        "menu_options": {
+          "credentials": "Sign in with e-mail and password (recommended)",
+          "callback": "Sign in with the Chrome Login Helper"
+        }
+      },
+      "credentials": {
+        "title": "Sign in to PostNL",
+        "description": "Sign in with the same credentials you use on jouw.postnl.nl. Your password is only used to sign in to PostNL; Home Assistant stores the resulting tokens, never your password.",
+        "data": {
+          "email": "E-mail address",
+          "password": "Password"
+        }
+      },
+      "callback": {
+        "title": "Sign in with the Chrome Login Helper",
+        "description": "### Linking your PostNL account\n\n1. [Download the PostNL Home Assistant Login Helper]({helper_url}) and extract the ZIP file. The helper is a Google Chrome extension.\n2. Open `chrome://extensions`, enable **Developer mode**, and choose **Load unpacked**. Select the extracted helper folder.\n3. Open [PostNL sign-in]({auth_url}) and sign in to your PostNL account.\n4. The helper automatically captures the `postnl://login?...` callback. Click the helper icon in Chrome and choose **Copy callback**.\n5. Return to Home Assistant, paste the callback below, and complete the sign-in process.",
+        "data": {
+          "callback_url": "PostNL callback URL"
+        },
+        "data_description": {
+          "callback_url": "Paste the full callback URL beginning with postnl://login?code=..."
+        }
       }
     },
     "error": {
-      "invalid_auth": "The PostNL sign-in is invalid or has expired. Try again.",
-      "cannot_connect": "Unable to reach PostNL or process the callback. Try again."
+      "invalid_auth": "PostNL did not accept the credentials, or the sign-in has expired. Try again.",
+      "login_changed": "The PostNL sign-in page responded unexpectedly. Try again later or use the Chrome Login Helper.",
+      "cannot_connect": "Unable to reach PostNL. Try again."
     },
-    "abort": {"already_configured": "This PostNL account is already configured."}
+    "abort": {
+      "already_configured": "This PostNL account is already configured.",
+      "reauth_successful": "PostNL has been reconnected.",
+      "unique_id_mismatch": "This is a different PostNL account than the one already linked."
+    }
   },
   "entity": {
     "sensor": {
-      "mail_count": {"name": "Mail items"},
-      "package_count": {"name": "Packages"},
-      "next_delivery": {"name": "Next delivery"},
-      "delivery_date": {"name": "Delivery date"},
-      "delivery_window": {"name": "Delivery window"},
-      "package_status": {"name": "Package status"},
-      "package_sender": {"name": "Sender"},
-      "package_receiver": {"name": "Receiver"},
-      "package_tracking": {"name": "Tracking"},
-      "package_event": {"name": "Latest event"},
-      "package_status_time": {"name": "Status time"},
-      "shipment_type": {"name": "Shipment type"},
-      "last_update": {"name": "Last update"}
+      "mail_count": {
+        "name": "Mail items"
+      },
+      "package_count": {
+        "name": "Packages"
+      },
+      "next_delivery": {
+        "name": "Next delivery"
+      },
+      "delivery_date": {
+        "name": "Delivery date"
+      },
+      "delivery_window": {
+        "name": "Delivery window"
+      },
+      "package_status": {
+        "name": "Package status"
+      },
+      "package_sender": {
+        "name": "Sender"
+      },
+      "package_receiver": {
+        "name": "Receiver"
+      },
+      "package_tracking": {
+        "name": "Tracking"
+      },
+      "package_event": {
+        "name": "Latest event"
+      },
+      "package_status_time": {
+        "name": "Status time"
+      },
+      "shipment_type": {
+        "name": "Shipment type"
+      },
+      "last_update": {
+        "name": "Last update"
+      },
+      "package_canonical_status": {
+        "name": "Package phase",
+        "state": {
+          "registered": "Registered",
+          "in_transit": "In transit",
+          "out_for_delivery": "Out for delivery",
+          "at_pickup_point": "Ready at PostNL Point",
+          "delivered": "Delivered",
+          "returning": "Returning",
+          "unknown": "Unknown"
+        }
+      },
+      "package_observation_code": {
+        "name": "PostNL status code"
+      },
+      "package_weight": {
+        "name": "Package weight"
+      },
+      "package_dimensions": {
+        "name": "Package dimensions"
+      },
+      "package_length": {
+        "name": "Package length"
+      },
+      "package_width": {
+        "name": "Package width"
+      },
+      "package_height": {
+        "name": "Package height"
+      },
+      "package_pickup_point": {
+        "name": "PostNL Point"
+      }
+    },
+    "binary_sensor": {
+      "mail_expected": {
+        "name": "Mail expected"
+      },
+      "package_delivered": {
+        "name": "Package delivered"
+      },
+      "package_pickup": {
+        "name": "PostNL Point delivery"
+      },
+      "connected": {
+        "name": "Connected"
+      }
     }
   }
 }

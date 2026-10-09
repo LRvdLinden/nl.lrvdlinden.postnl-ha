@@ -3,3 +3,4 @@
 - type: custom:postnl-mail-card
 - type: custom:postnl-packages-card
 - type: custom:postnl-delivery-card
+- type: custom:postnl-journey-card

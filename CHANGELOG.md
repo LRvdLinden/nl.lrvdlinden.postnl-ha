@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.1.0
+
+Brought in line with PostNL for Homey 1.2.8.
+
+- **Direct login**: sign in with your PostNL e-mail address and password, no Chrome extension required. The Chrome Login Helper stays available as a fallback option, both during setup and when re-authenticating. The password is never stored.
+- **New Lovelace card – Reis van je pakket** (`custom:postnl-journey-card`): the complete Track & Trace timeline of the active parcel with locations, weight, dimensions and PostNL Point.
+- **More parcel data** from PostNL Track & Trace: weight (kg), dimensions (cm, converted from PostNL millimetres), full status history, observation codes, a normalised package phase and PostNL Point / pick-up information.
+- New sensors: package phase (enum), weight, dimensions, length/width/height, PostNL status code and PostNL Point. New binary sensor: PostNL Point delivery.
+- **Mijn Pakketten** popup now shows weight, dimensions, PostNL Point, shipment type, delivery address type, direction, shared-from account, status code and a Track & Trace link.
+- New events: `postnl_package_delivered`, `postnl_delivery_window_changed`, `postnl_package_event_changed`, `postnl_package_weight_known` and `postnl_package_dimensions_known`. All parcel events carry the new data fields.
+- Fixed old delivered parcels that re-appear in the PostNL account feed triggering "new parcel" events. Parcels are now matched on the stable tracking number instead of PostNL's changing internal key.
+- A parcel that disappears from the account feed right after delivery is re-checked once via Track & Trace so the final "delivered" event is not missed.
+- Fixed a status such as "Je pakket wordt vandaag bezorgd" being treated as delivered.
+- Large card attributes (`items`, `active_package`, `journey_package`, `status_history`) are excluded from the recorder database.
+- The integration now uses whichever schema library the running Home Assistant core uses (voluptuous or probatio).
+- Bumped the Lovelace bundle to `postnl-card-v105.js`.
+
 ## 1.0.4
 
 - Updated **Mijn Bezorging** to use the same Home Assistant card background as **Mijn Post** and **Mijn Pakketten**.

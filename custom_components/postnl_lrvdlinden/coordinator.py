@@ -13,11 +13,16 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .api import PostNLApi, PostNLAuthError, PostNLError
 from .const import (
     DOMAIN,
+    EVENT_DELIVERY_WINDOW_CHANGED,
     EVENT_DELIVERY_WINDOW_KNOWN,
     EVENT_LOGIN_EXPIRED,
     EVENT_NEW_MAIL,
     EVENT_NEW_PACKAGE,
+    EVENT_PACKAGE_DELIVERED,
+    EVENT_PACKAGE_DIMENSIONS_KNOWN,
+    EVENT_PACKAGE_EVENT_CHANGED,
     EVENT_PACKAGE_STATUS_CHANGED,
+    EVENT_PACKAGE_WEIGHT_KNOWN,
     EVENT_SYNC_FAILED,
     UPDATE_INTERVAL,
 )
@@ -51,7 +56,7 @@ class PostNLCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "updatedAt": datetime.now(timezone.utc).isoformat(),
                 "connected": True,
             }
-            self._emit_events(self._previous, data)
+            await self._emit_events(self._previous, data)
             self._previous = data
             return data
         except PostNLAuthError as err:
@@ -78,20 +83,52 @@ class PostNLCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             except Exception as err:
                 _LOGGER.debug("PostNL mail image fetch failed for %s: %s", item_id, err)
 
+    @staticmethod
+    def _rank(p: dict[str, Any]) -> str:
+        return str(p.get("deliveryWindowFrom") or p.get("deliveryDate") or p.get("createdAt") or "9999")
+
     def active_package(self, data: dict[str, Any] | None = None) -> dict[str, Any] | None:
         packages = list((data or self.data or {}).get("packages") or [])
         active = [p for p in packages if not p.get("delivered")]
-        active.sort(key=lambda p: p.get("deliveryWindowFrom") or p.get("deliveryDate") or p.get("createdAt") or "9999")
+        active.sort(key=self._rank)
         return active[0] if active else None
 
-    def _emit_events(self, previous: dict[str, Any] | None, current: dict[str, Any]) -> None:
+    def journey_package(self, data: dict[str, Any] | None = None) -> dict[str, Any] | None:
+        """Parcel shown on the 'Reis van je pakket' card: first active parcel with Track & Trace events."""
+        packages = list((data or self.data or {}).get("packages") or [])
+        candidates = [p for p in packages if not p.get("delivered") and p.get("statusEvents")]
+        candidates.sort(key=self._rank)
+        return candidates[0] if candidates else None
+
+    @staticmethod
+    def _identity(p: dict[str, Any]) -> str:
+        # Prefer the stable tracking number: PostNL's internal key can change between syncs.
+        return str(p.get("barcode") or p.get("id") or "").strip()
+
+    @staticmethod
+    def _has_window(p: dict[str, Any]) -> bool:
+        return bool(str(p.get("deliveryWindow") or "").strip() or p.get("deliveryWindowFrom") or p.get("deliveryWindowTo"))
+
+    @staticmethod
+    def _event_text(p: dict[str, Any]) -> str:
+        return str(p.get("latestStatusEvent") or p.get("statusRaw") or p.get("status") or "")
+
+    @staticmethod
+    def _fingerprint(p: dict[str, Any]) -> str:
+        return str(p.get("statusFingerprint") or p.get("status") or "")
+
+    def _fire(self, event: str, data: dict[str, Any]) -> None:
+        self.hass.bus.async_fire(event, data)
+
+    async def _emit_events(self, previous: dict[str, Any] | None, current: dict[str, Any]) -> None:
+        # First successful poll after (re)start is the baseline: never fire for existing items.
         if not previous:
             return
         prev_letters = {str(x.get("id")): x for x in previous.get("letters") or []}
         cur_letters = {str(x.get("id")): x for x in current.get("letters") or []}
         for item_id in cur_letters.keys() - prev_letters.keys():
             item = cur_letters[item_id]
-            self.hass.bus.async_fire(
+            self._fire(
                 EVENT_NEW_MAIL,
                 {
                     "entry_id": self.entry.entry_id,
@@ -105,20 +142,57 @@ class PostNLCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 },
             )
 
-        prev_packages = {str(x.get("id") or x.get("barcode")): x for x in previous.get("packages") or []}
-        cur_packages = {str(x.get("id") or x.get("barcode")): x for x in current.get("packages") or []}
-        for package_id in cur_packages.keys() - prev_packages.keys():
-            p = cur_packages[package_id]
-            self.hass.bus.async_fire(EVENT_NEW_PACKAGE, self._package_event_data(p))
+        prev_packages = {self._identity(x): x for x in previous.get("packages") or [] if self._identity(x)}
+        cur_packages = {self._identity(x): x for x in current.get("packages") or [] if self._identity(x)}
 
-        for package_id in cur_packages.keys() & prev_packages.keys():
-            old, new = prev_packages[package_id], cur_packages[package_id]
-            if str(old.get("statusFingerprint") or old.get("status")) != str(new.get("statusFingerprint") or new.get("status")):
-                self.hass.bus.async_fire(EVENT_PACKAGE_STATUS_CHANGED, self._package_event_data(new))
-            old_window = bool(old.get("deliveryWindowFrom") or old.get("deliveryWindowTo"))
-            new_window = bool(new.get("deliveryWindowFrom") or new.get("deliveryWindowTo"))
-            if not old_window and new_window:
-                self.hass.bus.async_fire(EVENT_DELIVERY_WINDOW_KNOWN, self._package_event_data(new))
+        for key, new in cur_packages.items():
+            old = prev_packages.get(key)
+            # Historical delivered shipments can re-appear in PostNL's account feed.
+            # They are never "new"; only a real active -> delivered transition counts.
+            if old is None and new.get("delivered"):
+                _LOGGER.debug("Suppressed historical delivered parcel %s", key)
+                continue
+            data = self._package_event_data(new)
+            if old is None:
+                self._fire(EVENT_NEW_PACKAGE, data)
+            if not new.get("delivered") and self._has_window(new) and not (old and not old.get("delivered") and self._has_window(old)):
+                self._fire(EVENT_DELIVERY_WINDOW_KNOWN, data)
+            if old is None or (old.get("delivered") and new.get("delivered")):
+                continue
+            self._fire_changes(old, new, data)
+
+        # A parcel can vanish from the account list right after delivery. Re-check it once
+        # via Track & Trace so the final status ("Bezorgd") still produces events.
+        for key, old in prev_packages.items():
+            if key in cur_packages or old.get("delivered") or not old.get("detailsUrl"):
+                continue
+            try:
+                refreshed = await self.api.refresh_package_tracking(old)
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.debug("Final PostNL status refresh failed for %s: %s", key, err)
+                continue
+            if self._fingerprint(old) != self._fingerprint(refreshed):
+                self._fire_changes(old, refreshed, self._package_event_data(refreshed))
+
+    def _fire_changes(self, old: dict[str, Any], new: dict[str, Any], data: dict[str, Any]) -> None:
+        old_window = old.get("deliveryWindow") or ""
+        new_window = new.get("deliveryWindow") or ""
+        if old_window and new_window and old_window != new_window and not new.get("delivered"):
+            self._fire(EVENT_DELIVERY_WINDOW_CHANGED, {**data, "old_delivery_window": old_window})
+        old_event, new_event = self._event_text(old), self._event_text(new)
+        if new_event and new_event != old_event:
+            self._fire(EVENT_PACKAGE_EVENT_CHANGED, {**data, "old_event": old_event})
+        if not str(old.get("weight") or "").strip() and str(new.get("weight") or "").strip():
+            self._fire(EVENT_PACKAGE_WEIGHT_KNOWN, data)
+        if not str(old.get("dimensions") or "").strip() and str(new.get("dimensions") or "").strip():
+            self._fire(EVENT_PACKAGE_DIMENSIONS_KNOWN, data)
+        if not old.get("delivered") and new.get("delivered"):
+            self._fire(EVENT_PACKAGE_DELIVERED, data)
+        if self._fingerprint(old) != self._fingerprint(new):
+            self._fire(
+                EVENT_PACKAGE_STATUS_CHANGED,
+                {**data, "old_status": str(old.get("statusRaw") or old.get("status") or "")},
+            )
 
     def _package_event_data(self, p: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -128,10 +202,27 @@ class PostNLCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "sender": p.get("sender") or "",
             "receiver": p.get("receiver") or "",
             "status": p.get("statusRaw") or p.get("status") or "",
+            "status_code": p.get("statusCode") or "",
+            "canonical_status": p.get("canonicalStatus") or "unknown",
+            "observation_code": p.get("observationCode") or "",
             "event": p.get("latestStatusEvent") or "",
             "status_time": p.get("statusChangedAt") or "",
             "delivery_date": p.get("deliveryDate") or "",
             "delivery_window": p.get("deliveryWindow") or "",
+            "delivery_window_from": p.get("deliveryWindowFrom") or "",
+            "delivery_window_to": p.get("deliveryWindowTo") or "",
             "delivered": bool(p.get("delivered")),
             "shipment_type": p.get("shipmentType") or "",
+            "delivery_address_type": p.get("deliveryAddressType") or "",
+            "direction": p.get("direction") or "",
+            "shared_from": p.get("sourceDisplayName") or "",
+            "details_url": p.get("detailsUrl") or "",
+            "weight": p.get("weight") or "",
+            "weight_kg": p.get("weightKg"),
+            "dimensions": p.get("dimensions") or "",
+            "length_cm": p.get("dimensionLengthCm"),
+            "width_cm": p.get("dimensionWidthCm"),
+            "height_cm": p.get("dimensionHeightCm"),
+            "pickup": bool(p.get("pickup")),
+            "pickup_point": p.get("pickupPoint") or "",
         }

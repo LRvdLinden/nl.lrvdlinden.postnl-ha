@@ -106,10 +106,13 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          js = Path('custom_components/postnl_lrvdlinden/frontend/postnl-card-v104.js').read_text()
+          js = Path('custom_components/postnl_lrvdlinden/frontend/postnl-card-v105.js').read_text()
+          const = Path('custom_components/postnl_lrvdlinden/const.py').read_text()
+          assert 'postnl-card-v105.js' in const
           assert 'postnl-mail-card' in js
           assert 'postnl-packages-card' in js
           assert 'postnl-delivery-card' in js
+          assert 'postnl-journey-card' in js
           assert 'postnl-latest-mail-card' not in '\n'.join(x for x in js.splitlines() if 'filter(c=>' not in x)
           assert 'postnl-delivery-image-card' not in '\n'.join(x for x in js.splitlines() if 'filter(c=>' not in x)
           PY

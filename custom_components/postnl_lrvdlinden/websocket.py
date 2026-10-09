@@ -2,19 +2,19 @@
 from __future__ import annotations
 
 import base64
-import probatio
 
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 
 from .const import DOMAIN
+from .schema import vol
 
 
 @websocket_api.websocket_command(
     {
-        probatio.Required("type"): f"{DOMAIN}/get_mail_image",
-        probatio.Required("entry_id"): str,
-        probatio.Required("mail_id"): str,
+        vol.Required("type"): f"{DOMAIN}/get_mail_image",
+        vol.Required("entry_id"): str,
+        vol.Required("mail_id"): str,
     }
 )
 @callback

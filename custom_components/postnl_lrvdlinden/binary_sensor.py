@@ -15,6 +15,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities([
         PostNLBinarySensor(coordinator, "mail_expected", "Post verwacht", "mdi:email-fast-outline", lambda c: bool((c.data or {}).get("letters"))),
         PostNLBinarySensor(coordinator, "package_delivered", "Pakket bezorgd", "mdi:package-variant-closed-check", _latest_package_delivered),
+        PostNLBinarySensor(coordinator, "package_pickup", "Bezorging bij PostNL-punt", "mdi:storefront-check-outline", lambda c: bool((c.active_package() or {}).get("pickup"))),
         PostNLBinarySensor(coordinator, "connected", "Verbonden", "mdi:cloud-check-outline", lambda c: bool(c.last_update_success)),
     ])
 
