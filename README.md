@@ -74,6 +74,10 @@ Passwords, callbacks, authorization codes and tokens are not written to Home Ass
 
 The cards are loaded automatically and appear in the dashboard card picker. YAML configuration is also supported.
 
+<p align="center">
+  <img src="docs/lovelace-cards.png" alt="PostNL Lovelace cards: Mijn Post, Mijn Pakketten, Mijn Bezorging and Reis van je pakket" width="760">
+</p>
+
 ### Mijn Post
 
 ```yaml
