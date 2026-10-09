@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.1.0";
+  const VERSION = "1.0.5";
   const DOMAIN = "postnl_lrvdlinden";
   const BASE = `/${DOMAIN}_static`;
   const ICON = `${BASE}/icon.svg`;

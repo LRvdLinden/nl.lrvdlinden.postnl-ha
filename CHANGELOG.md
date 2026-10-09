@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0
+## 1.0.5
 
 Brought in line with PostNL for Homey 1.2.8.
 

@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-1.1.0-blue">
+  <img alt="Version" src="https://img.shields.io/badge/version-1.0.5-blue">
   <img alt="Home Assistant" src="https://img.shields.io/badge/Home%20Assistant-2026.6%2B-41BDF5">
   <img alt="HACS" src="https://img.shields.io/badge/HACS-Custom%20Integration-41BDF5">
 </p>
