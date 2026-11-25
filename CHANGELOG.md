@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.6
+
+- Fixed the **Mijn Post** scan and **Mijn Pakketten** detail popups closing after a second or two. The cards now only re-render when their data changes, like the Reis van je pakket card (#4).
+- Bumped the Lovelace bundle to `postnl-card-v106.js`.
+
 ## 1.0.5
 
 Brought in line with PostNL for Homey 1.2.8.
